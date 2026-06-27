@@ -7,8 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\css\fonts\" />
-    <Folder Include="wwwroot\css\images\" />
+    <Compile Remove="wwwroot\css\images\**" />
+    <Content Remove="wwwroot\css\images\**" />
+    <EmbeddedResource Remove="wwwroot\css\images\**" />
+    <None Remove="wwwroot\css\images\**" />
   </ItemGroup>
 
 </Project>
