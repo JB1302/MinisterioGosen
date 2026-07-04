@@ -72,13 +72,18 @@
 
                 @if (estaLogueado)
                 {
-                    <a asp-action="Index" asp-controller="Actividades" class="nav-link fw-semibold">
-                        <i class="bi bi-calendar-event me-1"></i> Actividades
-                    </a>
-
-                    <a asp-action="Index" asp-controller="Actividades" class="nav-link fw-semibold">
-                        <i class="bi bi-clock me-1"></i> Horarios
-                    </a>
+                    @if (esAdmin)
+                    {
+                        <a asp-action="Index" asp-controller="Actividad" class="nav-link fw-semibold">
+                            <i class="bi bi-calendar-event me-1"></i> Actividades
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-action="Consultar" asp-controller="Actividad" class="nav-link fw-semibold">
+                            <i class="bi bi-calendar-event me-1"></i> Actividades
+                        </a>
+                    }
 
                     <a asp-action="Crear" asp-controller="Citas" class="nav-link fw-semibold">
                         <i class="bi bi-calendar-plus me-1"></i> Agendar Cita
