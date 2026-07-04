@@ -49,10 +49,22 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Hora_Fin", model.Hora_Fin);
             parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
-            var response = context.Execute("spCrearActividad", parameters);
+            var idActividad = context.QueryFirstOrDefault<int>("spCrearActividad", parameters);
 
-            if (response > 0)
-                return Ok(response);
+            if (idActividad > 0)
+            {
+                if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
+                {
+                    var parametersMinisterio = new DynamicParameters();
+                    parametersMinisterio.Add("@Id_Actividad", idActividad);
+                    parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
+                    parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
+
+                    context.Execute("spGuardarMinisterioActividad", parametersMinisterio);
+                }
+
+                return Ok(idActividad);
+            }
 
             return BadRequest("No se ha registrado la actividad");
         }
@@ -75,7 +87,26 @@ namespace MinisterioGosenAPI.Controllers
             var response = context.Execute("spActualizarActividad", parameters);
 
             if (response > 0)
+            {
+                if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
+                {
+                    var parametersMinisterio = new DynamicParameters();
+                    parametersMinisterio.Add("@Id_Actividad", model.Id_Actividad);
+                    parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
+                    parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
+
+                    context.Execute("spGuardarMinisterioActividad", parametersMinisterio);
+                }
+                else
+                {
+                    var parametersEliminarMinisterio = new DynamicParameters();
+                    parametersEliminarMinisterio.Add("@Id_Actividad", model.Id_Actividad);
+
+                    context.Execute("spEliminarMinisterioPorActividad", parametersEliminarMinisterio);
+                }
+
                 return Ok(response);
+            }
 
             return BadRequest("No se ha actualizado la actividad");
         }
@@ -85,11 +116,16 @@ namespace MinisterioGosenAPI.Controllers
         {
             using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Actividad", id);
-
             try
             {
+                var parametersMinisterio = new DynamicParameters();
+                parametersMinisterio.Add("@Id_Actividad", id);
+
+                context.Execute("spEliminarMinisterioPorActividad", parametersMinisterio);
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Actividad", id);
+
                 var response = context.Execute("spEliminarActividad", parameters);
 
                 if (response > 0)

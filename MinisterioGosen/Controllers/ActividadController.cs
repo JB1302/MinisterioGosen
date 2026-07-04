@@ -37,6 +37,24 @@ namespace MinisterioGosen.Controllers
             }
         }
 
+        private void CargarMinisterios(int? idMinisterioSeleccionado = null)
+        {
+            using var client = _http.CreateClient();
+
+            var url = _config["Valores:UrlApi"] + "Ministerio/ListarMinisteriosAPI";
+            var response = client.GetAsync(url).Result;
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var ministerios = response.Content.ReadFromJsonAsync<List<MinisterioModel>>().Result;
+                ViewBag.Ministerios = new SelectList(ministerios, "Id_Ministerio", "Descripcion_Ministerio", idMinisterioSeleccionado);
+            }
+            else
+            {
+                ViewBag.Ministerios = new SelectList(new List<MinisterioModel>(), "Id_Ministerio", "Descripcion_Ministerio");
+            }
+        }
+
         [HttpGet]
         public IActionResult Consultar()
         {
@@ -84,6 +102,8 @@ namespace MinisterioGosen.Controllers
                 return RedirectToAction("Error", "Home", new { statusCode = 403 });
 
             CargarTiposActividad();
+            CargarMinisterios();
+
             return View();
         }
 
@@ -102,7 +122,9 @@ namespace MinisterioGosen.Controllers
                 return RedirectToAction("Index", "Actividad");
 
             ViewBag.Mensaje = response.Content.ReadAsStringAsync().Result;
+
             CargarTiposActividad(model.Id_Tipo_Actividad);
+            CargarMinisterios(model.Id_Ministerio);
 
             return View(model);
         }
@@ -121,7 +143,10 @@ namespace MinisterioGosen.Controllers
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 var datos = response.Content.ReadFromJsonAsync<ActividadModel>().Result;
+
                 CargarTiposActividad(datos!.Id_Tipo_Actividad);
+                CargarMinisterios(datos.Id_Ministerio);
+
                 return View(datos);
             }
 
@@ -143,7 +168,9 @@ namespace MinisterioGosen.Controllers
                 return RedirectToAction("Index", "Actividad");
 
             ViewBag.Mensaje = response.Content.ReadAsStringAsync().Result;
+
             CargarTiposActividad(model.Id_Tipo_Actividad);
+            CargarMinisterios(model.Id_Ministerio);
 
             return View(model);
         }
