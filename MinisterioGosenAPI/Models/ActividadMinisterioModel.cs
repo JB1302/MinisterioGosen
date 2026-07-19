@@ -20,6 +20,11 @@ namespace MinisterioGosenAPI.Models
         [StringLength(200, ErrorMessage = "La observación no puede superar 200 caracteres")]
         public string? Observacion { get; set; }
 
+		// 🔹 Propiedades auxiliares para mostrar datos legibles
+		public string? NombreActividad { get; set; }
+		public string? NombreMinisterio { get; set; }
 
-    }
+
+
+	}
 }
