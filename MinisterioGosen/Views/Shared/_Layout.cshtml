@@ -206,6 +206,23 @@
                         <i class="bi bi-person-lines-fill me-1"></i>
                         Usuario
                     </a>
+                    @* ActividadUsuario *@
+                    <a asp-action="Index"
+                       asp-controller="ActividadUsuario"
+                       class="nav-link fw-semibold @(NavActivo(
+                                                 "ActividadUsuario",
+                                                 "Index",
+                                                 "Crear",
+                                                 "Editar",
+                                                 "Detalle",
+                                                 "Detalles",
+                                                 "Eliminar"
+                                             ))">
+
+                        <i class="bi bi-clipboard-check me-1"></i>
+                        Actividades por Usuario
+                    </a>
+
 
                     @* Ministerios *@
                     <a asp-action="Index"
@@ -214,6 +231,22 @@
 
                         <i class="bi bi-people me-1"></i>
                         Ministerios
+                    </a>
+                    @* ActividadMinisterio *@
+                    <a asp-action="Index"
+                       asp-controller="ActividadMinisterio"
+                       class="nav-link fw-semibold @(NavActivo(
+                                                                        "ActividadMinisterio",
+                                                                        "Index",
+                                                                        "Crear",
+                                                                        "Editar",
+                                                                        "Detalle",
+                                                                        "Detalles",
+                                                                        "Eliminar"
+                                                                    ))">
+
+                        <i class="bi bi-clipboard-check me-1"></i>
+                        Actividades por Ministerio
                     </a>
 
                     @* Administración de citas *@
