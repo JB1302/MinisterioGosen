@@ -189,46 +189,7 @@
                     {
                         <!-- GESTIÓN -->
 
-                        <i class="bi bi-calendar-plus me-1"></i>
-                        Agendar Cita
-                    </a>
-                }
-
-                @if (esAdmin)
-                {
-                    @* Usuarios *@
-                    <a asp-action="Index"
-                       asp-controller="Usuario"
-                       class="nav-link fw-semibold @(NavActivo(
-                                              "Usuario",
-                                              "Index",
-                                              "Crear",
-                                              "Editar",
-                                              "Detalle",
-                                              "Detalles",
-                                              "Eliminar"
-                                          ))">
-
-                        <i class="bi bi-person-lines-fill me-1"></i>
-                        Usuario
-                    </a>
-                    @* ActividadUsuario *@
-                    <a asp-action="Index"
-                       asp-controller="ActividadUsuario"
-                       class="nav-link fw-semibold @(NavActivo(
-                                                 "ActividadUsuario",
-                                                 "Index",
-                                                 "Crear",
-                                                 "Editar",
-                                                 "Detalle",
-                                                 "Detalles",
-                                                 "Eliminar"
-                                             ))">
-
-                        <i class="bi bi-clipboard-check me-1"></i>
-                        Actividades por Usuario
-                    </a>
-
+                        <div class="nav-item dropdown">
 
                             <a href="#"
                                class="nav-link dropdown-toggle fw-semibold px-lg-3"
@@ -236,25 +197,9 @@
                                data-bs-toggle="dropdown"
                                aria-expanded="false">
 
-                        <i class="bi bi-people me-1"></i>
-                        Ministerios
-                    </a>
-                    @* ActividadMinisterio *@
-                    <a asp-action="Index"
-                       asp-controller="ActividadMinisterio"
-                       class="nav-link fw-semibold @(NavActivo(
-                                                                        "ActividadMinisterio",
-                                                                        "Index",
-                                                                        "Crear",
-                                                                        "Editar",
-                                                                        "Detalle",
-                                                                        "Detalles",
-                                                                        "Eliminar"
-                                                                    ))">
-
-                        <i class="bi bi-clipboard-check me-1"></i>
-                        Actividades por Ministerio
-                    </a>
+                                <i class="bi bi-folder-fill me-1"></i>
+                                Gestión
+                            </a>
 
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2">
 
@@ -329,6 +274,48 @@
 
                                             <small class="text-muted">
                                                 Consultar y atender citas
+                                            </small>
+                                        </div>
+                                    </a>
+                                </li>
+
+                                <!-- Actividad por Usuario -->
+                                <li>
+                                    <a asp-controller="ActividadUsuario"
+                                       asp-action="Index"
+                                       class="dropdown-item d-flex align-items-center gap-3
+                                        py-2 rounded-2 @(NavActivo("ActividadUsuario"))">
+
+                                        <i class="bi bi-person-check-fill text-primary fs-5"></i>
+
+                                        <div>
+                                            <div class="fw-semibold">
+                                                Actividad por Usuario
+                                            </div>
+
+                                            <small class="text-muted">
+                                                Asistencia de usuarios a actividades
+                                            </small>
+                                        </div>
+                                    </a>
+                                </li>
+
+                                <!-- Actividad por Ministerio -->
+                                <li>
+                                    <a asp-controller="ActividadMinisterio"
+                                       asp-action="Index"
+                                       class="dropdown-item d-flex align-items-center gap-3
+                                        py-2 rounded-2 @(NavActivo("ActividadMinisterio"))">
+
+                                        <i class="bi bi-diagram-3-fill text-success fs-5"></i>
+
+                                        <div>
+                                            <div class="fw-semibold">
+                                                Actividad por Ministerio
+                                            </div>
+
+                                            <small class="text-muted">
+                                                Actividades asignadas a cada ministerio
                                             </small>
                                         </div>
                                     </a>
