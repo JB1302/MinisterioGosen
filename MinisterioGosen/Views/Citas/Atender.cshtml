@@ -148,31 +148,4 @@
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const form = document.getElementById("formAtenderCita");
-            const detalle = document.getElementById("Detalle_Cita");
-
-            if (!form || !detalle) return;
-
-            form.addEventListener("submit", function (event) {
-                detalle.classList.remove("is-invalid");
-
-                if (detalle.value.trim() === "") {
-                    event.preventDefault();
-                    detalle.classList.add("is-invalid");
-                    detalle.focus();
-                    return;
-                }
-
-                if (detalle.value.trim().length > 500) {
-                    event.preventDefault();
-                    detalle.classList.add("is-invalid");
-                    detalle.focus();
-                }
-            });
-        });
-    </script>
-}
+<script src="~/js/atendercita.js"></script>

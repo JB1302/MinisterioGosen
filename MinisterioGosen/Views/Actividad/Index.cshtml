@@ -280,45 +280,4 @@
     <input type="hidden" name="id" id="activarId" />
     <input type="hidden" name="origen" value="index" />
 </form>
-
-<script>
-    function confirmarInactivarActividad(boton) {
-        const nombre = boton.getAttribute("data-nombre");
-
-        Swal.fire({
-            title: "Confirmar inactivación",
-            text: "¿Desea inactivar la actividad " + nombre + "? Dejará de mostrarse a los usuarios, pero no se eliminará del sistema.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Inactivar",
-            cancelButtonText: "Cancelar",
-            confirmButtonColor: "#bf8350",
-            cancelButtonColor: "#6c757d"
-        }).then(function (resultado) {
-            if (resultado.isConfirmed) {
-                document.getElementById("inactivarId").value = boton.getAttribute("data-id");
-                document.getElementById("formInactivarActividad").submit();
-            }
-        });
-    }
-
-    function confirmarActivarActividad(boton) {
-        const nombre = boton.getAttribute("data-nombre");
-
-        Swal.fire({
-            title: "Confirmar activación",
-            text: "¿Desea activar nuevamente la actividad " + nombre + "?",
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Activar",
-            cancelButtonText: "Cancelar",
-            confirmButtonColor: "#064442",
-            cancelButtonColor: "#6c757d"
-        }).then(function (resultado) {
-            if (resultado.isConfirmed) {
-                document.getElementById("activarId").value = boton.getAttribute("data-id");
-                document.getElementById("formActivarActividad").submit();
-            }
-        });
-    }
-</script>
+<script src="~/js/actividadindex.js"></script>

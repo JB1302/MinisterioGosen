@@ -243,15 +243,4 @@
     }
 
 </div>
-
-@section Scripts {
-    @if (TempData["CitaAtendida"] != null)
-    {
-        <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                var modal = new bootstrap.Modal(document.getElementById("modalCitaAtendida"));
-                modal.show();
-            });
-        </script>
-    }
-}
+<script src="~/js/citasindex.js"></script>
