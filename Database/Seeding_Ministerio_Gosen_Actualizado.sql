@@ -7,14 +7,19 @@ GO
 
 /* ============================================================================
    SEEDING COMPLETO Y SEGURO - MINISTERIO GOSEN
+   Compatible con DB_Ministerio_Gosen(5).sql
 
    COMPORTAMIENTO
    - Conserva todos los registros existentes de dbo.Usuario.
    - No reinicia el IDENTITY de dbo.Usuario ni de dbo.Rol.
-   - Inserta solamente los usuarios del seeding que todavía no existan.
+   - Inserta solamente los usuarios ficticios que todavía no existan.
    - Si coincide la identificación o el correo, conserva el usuario actual.
    - Las contraseñas de los usuarios nuevos se almacenan con BCrypt.
    - Limpia y vuelve a poblar las tablas operativas y de demostración.
+   - Genera datos históricos y futuros útiles para Dashboard y Reportes.
+   - Respeta Citas.Estado = Pendiente/Atendida.
+   - Respeta el horario de citas de 08:00 a 17:00.
+   - Maneja Actividad.Estado = Activo/Inactivo.
 
    CREDENCIALES DE LOS USUARIOS NUEVOS
    - Administrador: ministeriogosen@gmail.com / admin123
@@ -76,6 +81,33 @@ BEGIN TRY
                 FOREIGN KEY (Id_Opcion_Padre)
                 REFERENCES dbo.Chat_Bot_Opciones (Id_Opcion)
         );
+    END;
+
+    /* ============================================================
+       2.1 COMPATIBILIDAD CON LA VERSION FINAL DE ACTIVIDAD
+       ============================================================ */
+
+    IF COL_LENGTH('dbo.Actividad', 'Estado') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Actividad
+        ADD Estado VARCHAR(20) NOT NULL
+            CONSTRAINT DF_Actividad_Estado DEFAULT ('Activo');
+    END;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM sys.check_constraints
+        WHERE name = 'chk_estado_actividad'
+          AND parent_object_id = OBJECT_ID('dbo.Actividad')
+    )
+    BEGIN
+        ALTER TABLE dbo.Actividad WITH CHECK
+        ADD CONSTRAINT chk_estado_actividad
+            CHECK (Estado IN ('Activo', 'Inactivo'));
+
+        ALTER TABLE dbo.Actividad
+        CHECK CONSTRAINT chk_estado_actividad;
     END;
 
     /* ============================================================
@@ -425,6 +457,9 @@ BEGIN TRY
 
     /* ============================================================
        8. USUARIOS POR MINISTERIO
+       - Relación principal activa para todos los usuarios demo.
+       - Algunos usuarios tienen un segundo ministerio activo.
+       - Se agregan relaciones históricas inactivas para probar reportes.
        ============================================================ */
 
     DECLARE @TotalMinisterios INT =
@@ -436,12 +471,12 @@ BEGIN TRY
     ;WITH Usuarios AS
     (
         SELECT
-            Id_Usuario,
-            ROW_NUMBER() OVER (ORDER BY Id_Usuario) AS RN
+            UBase.Id_Usuario,
+            ROW_NUMBER() OVER (ORDER BY UBase.Id_Usuario) AS RN
         FROM dbo.Usuario AS UBase
         INNER JOIN @IdsUsuariosSeed AS IDS
             ON IDS.UsuarioSeedId = UBase.Id_Usuario
-        WHERE Id_Rol = 2
+        WHERE UBase.Id_Rol = 2
     ),
     Ministerios AS
     (
@@ -462,10 +497,16 @@ BEGIN TRY
     SELECT
         M.Id_Ministerio,
         U.Id_Usuario,
-        DATEADD(DAY, -((U.RN * 5) % 210), CAST(GETDATE() AS DATE)),
-        NULL,
-        'Activo',
-        'Miembro activo del ministerio.'
+        DATEADD(DAY, -((U.RN * 7) % 330) - 30, CAST(GETDATE() AS DATE)),
+        CASE WHEN U.RN % 13 = 0
+             THEN DATEADD(DAY, -((U.RN * 3) % 45) - 10, CAST(GETDATE() AS DATE))
+             ELSE NULL
+        END,
+        CASE WHEN U.RN % 13 = 0 THEN 'Inactivo' ELSE 'Activo' END,
+        CASE WHEN U.RN % 13 = 0
+             THEN 'Participación histórica finalizada.'
+             ELSE 'Miembro activo del ministerio.'
+        END
     FROM Usuarios U
     INNER JOIN Ministerios M
         ON M.RN = ((U.RN - 1) % @TotalMinisterios) + 1;
@@ -473,13 +514,13 @@ BEGIN TRY
     ;WITH Usuarios AS
     (
         SELECT
-            Id_Usuario,
-            ROW_NUMBER() OVER (ORDER BY Id_Usuario) AS RN
+            UBase.Id_Usuario,
+            ROW_NUMBER() OVER (ORDER BY UBase.Id_Usuario) AS RN
         FROM dbo.Usuario AS UBase
         INNER JOIN @IdsUsuariosSeed AS IDS
             ON IDS.UsuarioSeedId = UBase.Id_Usuario
-        WHERE Id_Rol = 2
-          AND Estado = 'A'
+        WHERE UBase.Id_Rol = 2
+          AND UBase.Estado = 'A'
     ),
     Ministerios AS
     (
@@ -500,7 +541,7 @@ BEGIN TRY
     SELECT
         M.Id_Ministerio,
         U.Id_Usuario,
-        DATEADD(DAY, -((U.RN * 7) % 180), CAST(GETDATE() AS DATE)),
+        DATEADD(DAY, -((U.RN * 5) % 180), CAST(GETDATE() AS DATE)),
         NULL,
         'Activo',
         'Apoyo adicional en actividades del ministerio.'
@@ -519,6 +560,7 @@ BEGIN TRY
 
     /* ============================================================
        9. ACTIVIDADES Y RELACION CON MINISTERIOS
+       Se distribuyen en los últimos 12 meses y en fechas futuras.
        ============================================================ */
 
     DECLARE @ActividadesSeed TABLE
@@ -531,7 +573,8 @@ BEGIN TRY
         Hora_Fin TIME(7),
         Nombre_Tipo VARCHAR(50),
         Ministerio VARCHAR(100),
-        Observacion VARCHAR(200)
+        Observacion VARCHAR(200),
+        Estado VARCHAR(20)
     );
 
     INSERT INTO @ActividadesSeed
@@ -544,45 +587,58 @@ BEGIN TRY
         Hora_Fin,
         Nombre_Tipo,
         Ministerio,
-        Observacion
+        Observacion,
+        Estado
     )
     VALUES
-    ('Culto dominical familiar', 2, 0, 'Templo principal', '09:00', '11:00', 'Culto', 'Ministerio de Musica', 'Apoyo musical en culto dominical.'),
-    ('Reunion de jovenes', 4, 0, 'Salon multiuso', '17:00', '19:00', 'Reunion', 'Ministerio de Jovenes', 'Reunion semanal de jovenes.'),
-    ('Taller para padres y niños', 7, 0, 'Aula de niños', '14:00', '16:00', 'Taller', 'Ministerio de Niños', 'Taller formativo para familias.'),
-    ('Visita a familias de la comunidad', 10, 0, 'La Fila de Mora', '08:00', '12:00', 'Visita', 'Ministerio de Ayuda Social', 'Visitas programadas a familias.'),
-    ('Capacitacion de servidores', 12, 0, 'Aula principal', '13:00', '16:00', 'Capacitacion', 'Ministerio de Adultos', 'Capacitacion general de servidores.'),
-    ('Entrega de viveres', 15, 0, 'Centro comunitario', '09:00', '12:00', 'Servicio comunitario', 'Ministerio de Ayuda Social', 'Entrega comunitaria de viveres.'),
-    ('Noche de oracion', 18, 0, 'Templo principal', '18:30', '20:00', 'Oracion', 'Ministerio de Oracion', 'Noche de oracion congregacional.'),
-    ('Reunion de mujeres', 20, 0, 'Salon multiuso', '15:00', '17:00', 'Reunion', 'Ministerio de Mujeres', 'Reunion mensual de mujeres.'),
-    ('Ensayo de alabanza', 21, 0, 'Templo principal', '16:00', '18:00', 'Reunion', 'Ministerio de Musica', 'Ensayo previo al culto.'),
-    ('Taller de liderazgo juvenil', 24, 0, 'Aula principal', '14:00', '17:00', 'Taller', 'Ministerio de Jovenes', 'Taller formativo para jovenes.'),
-    ('Actividad recreativa infantil', 28, 0, 'Area verde', '09:00', '11:30', 'Servicio comunitario', 'Ministerio de Niños', 'Actividad recreativa infantil.'),
-    ('Charla de apoyo familiar', 30, 0, 'Salon multiuso', '14:00', '16:00', 'Taller', 'Ministerio de Adultos', 'Charla abierta para familias.'),
-    ('Culto de alabanza', 32, 0, 'Templo principal', '18:00', '20:00', 'Culto', 'Ministerio de Musica', 'Actividad de alabanza y adoracion.'),
-    ('Jornada de limpieza comunitaria', 35, 0, 'Comunidad La Fila', '08:00', '11:00', 'Servicio comunitario', 'Ministerio de Evangelismo', 'Servicio comunitario local.'),
-    ('Reunion de equipo multimedia', 36, 0, 'Cabina tecnica', '18:00', '19:30', 'Reunion', 'Ministerio de Multimedia', 'Coordinacion tecnica semanal.'),
-    ('Capacitacion de bienvenida', 38, 0, 'Recepcion', '10:00', '12:00', 'Capacitacion', 'Ministerio de Bienvenida', 'Capacitacion para equipo de bienvenida.'),
-    ('Escuela dominical infantil', 40, 0, 'Aula de niños', '09:00', '10:30', 'Taller', 'Ministerio de Niños', 'Clase dominical para niños.'),
-    ('Encuentro de parejas', 42, 0, 'Salon multiuso', '18:00', '20:00', 'Taller', 'Ministerio de Adultos', 'Actividad de apoyo familiar.'),
-    ('Campaña de donacion', 45, 1, 'Centro comunitario', '09:00', '15:00', 'Ayuda social', 'Ministerio de Ayuda Social', 'Recoleccion y clasificacion de donaciones.'),
-    ('Reunion de planificacion evangelismo', 47, 0, 'Aula principal', '18:00', '20:00', 'Reunion', 'Ministerio de Evangelismo', 'Planificacion de actividades comunitarias.'),
-    ('Practica de sonido', 49, 0, 'Templo principal', '17:00', '19:00', 'Capacitacion', 'Ministerio de Multimedia', 'Practica de sonido y proyeccion.'),
-    ('Devocional de mujeres', 52, 0, 'Salon multiuso', '16:00', '18:00', 'Oracion', 'Ministerio de Mujeres', 'Devocional y seguimiento espiritual.'),
-    ('Convivio juvenil', 55, 0, 'Area verde', '15:00', '18:00', 'Servicio comunitario', 'Ministerio de Jovenes', 'Convivio e integracion de jovenes.'),
-    ('Taller de apoyo emocional', 58, 0, 'Aula principal', '14:00', '16:30', 'Taller', 'Ministerio de Adultos', 'Taller de acompañamiento familiar.'),
-    ('Visita de seguimiento', 60, 0, 'Comunidad La Fila', '09:00', '12:00', 'Visita', 'Ministerio de Oracion', 'Seguimiento a solicitudes de oracion.'),
-    ('Reunion general de servidores', 62, 0, 'Templo principal', '18:30', '20:30', 'Reunion', 'Ministerio de Bienvenida', 'Coordinacion general de servidores.'),
-    ('Culto juvenil especial', 65, 0, 'Templo principal', '18:00', '20:30', 'Culto', 'Ministerio de Jovenes', 'Culto especial organizado por jovenes.'),
-    ('Clase de musica basica', 68, 0, 'Salon de musica', '14:00', '16:00', 'Capacitacion', 'Ministerio de Musica', 'Formacion musical basica.'),
-    ('Tarde de juegos infantiles', 70, 0, 'Area verde', '14:00', '17:00', 'Servicio comunitario', 'Ministerio de Niños', 'Actividad recreativa para niños.'),
-    ('Reunion de intercesion', 73, 0, 'Templo principal', '19:00', '20:30', 'Oracion', 'Ministerio de Oracion', 'Reunion de intercesion.'),
-    ('Atencion a visitantes', 75, 0, 'Recepcion', '08:30', '11:30', 'Servicio comunitario', 'Ministerio de Bienvenida', 'Apoyo a visitantes en culto.'),
-    ('Taller de redes sociales', 78, 0, 'Aula multimedia', '15:00', '17:00', 'Capacitacion', 'Ministerio de Multimedia', 'Capacitacion de comunicacion digital.'),
-    ('Salida evangelistica', 80, 0, 'Comunidad cercana', '08:00', '12:00', 'Visita', 'Ministerio de Evangelismo', 'Actividad de alcance comunitario.'),
-    ('Encuentro de adultos mayores', 83, 0, 'Salon multiuso', '10:00', '12:00', 'Reunion', 'Ministerio de Adultos', 'Encuentro y acompañamiento.'),
-    ('Taller de manualidades', 85, 0, 'Aula de mujeres', '14:00', '16:00', 'Taller', 'Ministerio de Mujeres', 'Taller creativo y de convivencia.'),
-    ('Culto de accion de gracias', 90, 0, 'Templo principal', '18:00', '20:00', 'Culto', 'Ministerio de Musica', 'Culto congregacional especial.');
+    ('Culto de aniversario', -330, 0, 'Templo principal', '18:00', '20:00', 'Culto', 'Ministerio de Musica', 'Celebración especial de aniversario.', 'Activo'),
+    ('Jornada de ayuda comunitaria', -305, 0, 'Centro comunitario', '08:00', '12:00', 'Ayuda social', 'Ministerio de Ayuda Social', 'Entrega de alimentos y artículos de primera necesidad.', 'Activo'),
+    ('Taller de liderazgo juvenil', -282, 0, 'Aula principal', '14:00', '17:00', 'Taller', 'Ministerio de Jovenes', 'Formación de líderes juveniles.', 'Activo'),
+    ('Encuentro de mujeres', -260, 0, 'Salon multiuso', '15:00', '17:00', 'Reunion', 'Ministerio de Mujeres', 'Encuentro mensual y espacio de convivencia.', 'Activo'),
+    ('Capacitacion de sonido', -238, 0, 'Cabina tecnica', '16:00', '18:00', 'Capacitacion', 'Ministerio de Multimedia', 'Capacitación técnica para sonido y proyección.', 'Activo'),
+    ('Visita a familias', -215, 0, 'La Fila de Mora', '08:00', '12:00', 'Visita', 'Ministerio de Ayuda Social', 'Visitas programadas a familias de la comunidad.', 'Activo'),
+    ('Actividad recreativa infantil', -193, 0, 'Area verde', '09:00', '12:00', 'Servicio comunitario', 'Ministerio de Niños', 'Juegos y actividades recreativas para niños.', 'Activo'),
+    ('Noche de oracion', -171, 0, 'Templo principal', '18:00', '20:00', 'Oracion', 'Ministerio de Oracion', 'Actividad congregacional de oración.', 'Activo'),
+    ('Salida evangelistica', -148, 0, 'Comunidad cercana', '08:00', '12:00', 'Visita', 'Ministerio de Evangelismo', 'Actividad de alcance comunitario.', 'Activo'),
+    ('Reunion de servidores', -126, 0, 'Salon multiuso', '18:00', '20:00', 'Reunion', 'Ministerio de Bienvenida', 'Coordinación de equipos de servicio.', 'Activo'),
+    ('Culto juvenil especial', -104, 0, 'Templo principal', '18:00', '20:30', 'Culto', 'Ministerio de Jovenes', 'Culto especial organizado por jóvenes.', 'Activo'),
+    ('Taller para padres', -82, 0, 'Aula de niños', '14:00', '16:00', 'Taller', 'Ministerio de Niños', 'Taller de acompañamiento para familias.', 'Activo'),
+    ('Campaña de donacion', -61, 1, 'Centro comunitario', '09:00', '15:00', 'Ayuda social', 'Ministerio de Ayuda Social', 'Recolección y clasificación de donaciones.', 'Activo'),
+    ('Practica de alabanza', -45, 0, 'Templo principal', '17:00', '19:00', 'Reunion', 'Ministerio de Musica', 'Ensayo general del equipo de música.', 'Activo'),
+    ('Taller de apoyo emocional', -31, 0, 'Aula principal', '14:00', '16:30', 'Taller', 'Ministerio de Adultos', 'Taller de acompañamiento familiar.', 'Activo'),
+    ('Reunion de intercesion', -18, 0, 'Templo principal', '19:00', '20:30', 'Oracion', 'Ministerio de Oracion', 'Reunión de intercesión.', 'Activo'),
+    ('Escuela dominical infantil', -10, 0, 'Aula de niños', '09:00', '10:30', 'Taller', 'Ministerio de Niños', 'Clase dominical para niños.', 'Activo'),
+    ('Reunion general de jovenes', -5, 0, 'Salon multiuso', '17:00', '19:00', 'Reunion', 'Ministerio de Jovenes', 'Reunión general de jóvenes.', 'Activo'),
+
+    ('Culto dominical familiar', 2, 0, 'Templo principal', '09:00', '11:00', 'Culto', 'Ministerio de Musica', 'Apoyo musical en culto dominical.', 'Activo'),
+    ('Reunion de jovenes', 4, 0, 'Salon multiuso', '17:00', '19:00', 'Reunion', 'Ministerio de Jovenes', 'Reunión semanal de jóvenes.', 'Activo'),
+    ('Taller para padres y niños', 7, 0, 'Aula de niños', '14:00', '16:00', 'Taller', 'Ministerio de Niños', 'Taller formativo para familias.', 'Activo'),
+    ('Visita comunitaria', 10, 0, 'La Fila de Mora', '08:00', '12:00', 'Visita', 'Ministerio de Ayuda Social', 'Visitas programadas a familias.', 'Activo'),
+    ('Capacitacion de servidores', 12, 0, 'Aula principal', '13:00', '16:00', 'Capacitacion', 'Ministerio de Adultos', 'Capacitación general de servidores.', 'Activo'),
+    ('Entrega de viveres', 15, 0, 'Centro comunitario', '09:00', '12:00', 'Servicio comunitario', 'Ministerio de Ayuda Social', 'Entrega comunitaria de víveres.', 'Activo'),
+    ('Noche especial de oracion', 18, 0, 'Templo principal', '18:30', '20:00', 'Oracion', 'Ministerio de Oracion', 'Noche de oración congregacional.', 'Activo'),
+    ('Reunion mensual de mujeres', 20, 0, 'Salon multiuso', '15:00', '17:00', 'Reunion', 'Ministerio de Mujeres', 'Reunión mensual de mujeres.', 'Activo'),
+    ('Ensayo de alabanza', 21, 0, 'Templo principal', '16:00', '18:00', 'Reunion', 'Ministerio de Musica', 'Ensayo previo al culto.', 'Activo'),
+    ('Taller juvenil de liderazgo', 24, 0, 'Aula principal', '14:00', '17:00', 'Taller', 'Ministerio de Jovenes', 'Taller formativo para jóvenes.', 'Activo'),
+    ('Tarde recreativa infantil', 28, 0, 'Area verde', '09:00', '11:30', 'Servicio comunitario', 'Ministerio de Niños', 'Actividad recreativa infantil.', 'Activo'),
+    ('Charla de apoyo familiar', 30, 0, 'Salon multiuso', '14:00', '16:00', 'Taller', 'Ministerio de Adultos', 'Charla abierta para familias.', 'Activo'),
+    ('Culto de alabanza', 32, 0, 'Templo principal', '18:00', '20:00', 'Culto', 'Ministerio de Musica', 'Actividad de alabanza y adoración.', 'Activo'),
+    ('Jornada de limpieza comunitaria', 35, 0, 'Comunidad La Fila', '08:00', '11:00', 'Servicio comunitario', 'Ministerio de Evangelismo', 'Servicio comunitario local.', 'Activo'),
+    ('Reunion de equipo multimedia', 36, 0, 'Cabina tecnica', '18:00', '19:30', 'Reunion', 'Ministerio de Multimedia', 'Coordinación técnica semanal.', 'Activo'),
+    ('Capacitacion de bienvenida', 38, 0, 'Recepcion', '10:00', '12:00', 'Capacitacion', 'Ministerio de Bienvenida', 'Capacitación para equipo de bienvenida.', 'Activo'),
+    ('Encuentro de parejas', 42, 0, 'Salon multiuso', '18:00', '20:00', 'Taller', 'Ministerio de Adultos', 'Actividad de apoyo familiar.', 'Activo'),
+    ('Campaña solidaria', 45, 1, 'Centro comunitario', '09:00', '15:00', 'Ayuda social', 'Ministerio de Ayuda Social', 'Campaña solidaria para la comunidad.', 'Activo'),
+    ('Planificacion de evangelismo', 47, 0, 'Aula principal', '18:00', '20:00', 'Reunion', 'Ministerio de Evangelismo', 'Planificación de actividades comunitarias.', 'Activo'),
+    ('Practica de sonido y proyeccion', 49, 0, 'Templo principal', '17:00', '19:00', 'Capacitacion', 'Ministerio de Multimedia', 'Práctica de sonido y proyección.', 'Activo'),
+    ('Devocional de mujeres', 52, 0, 'Salon multiuso', '16:00', '18:00', 'Oracion', 'Ministerio de Mujeres', 'Devocional y seguimiento espiritual.', 'Activo'),
+    ('Convivio juvenil', 55, 0, 'Area verde', '15:00', '18:00', 'Servicio comunitario', 'Ministerio de Jovenes', 'Convivio e integración de jóvenes.', 'Activo'),
+    ('Taller de acompañamiento familiar', 58, 0, 'Aula principal', '14:00', '16:30', 'Taller', 'Ministerio de Adultos', 'Taller de acompañamiento familiar.', 'Activo'),
+    ('Visita de seguimiento espiritual', 60, 0, 'Comunidad La Fila', '09:00', '12:00', 'Visita', 'Ministerio de Oracion', 'Seguimiento a solicitudes de oración.', 'Activo'),
+    ('Reunion de coordinadores', 62, 0, 'Templo principal', '18:30', '20:30', 'Reunion', 'Ministerio de Bienvenida', 'Coordinación general de servidores.', 'Activo'),
+    ('Culto juvenil de cierre', 65, 0, 'Templo principal', '18:00', '20:30', 'Culto', 'Ministerio de Jovenes', 'Culto especial organizado por jóvenes.', 'Activo'),
+    ('Clase de musica basica', 68, 0, 'Salon de musica', '14:00', '16:00', 'Capacitacion', 'Ministerio de Musica', 'Formación musical básica.', 'Activo'),
+    ('Taller de redes sociales', 78, 0, 'Aula multimedia', '15:00', '17:00', 'Capacitacion', 'Ministerio de Multimedia', 'Capacitación de comunicación digital.', 'Activo'),
+    ('Actividad cancelada de prueba', 85, 0, 'Salon multiuso', '14:00', '16:00', 'Reunion', 'Ministerio de Adultos', 'Registro inactivo para pruebas de interfaz.', 'Inactivo');
 
     INSERT INTO dbo.Actividad
     (
@@ -592,7 +648,8 @@ BEGIN TRY
         Lugar,
         Hora_Ini,
         Hora_Fin,
-        Id_Tipo_Actividad
+        Id_Tipo_Actividad,
+        Estado
     )
     SELECT
         S.Nombre_Actividad,
@@ -601,7 +658,8 @@ BEGIN TRY
         S.Lugar,
         S.Hora_Ini,
         S.Hora_Fin,
-        TA.Id_Tipo_Actividad
+        TA.Id_Tipo_Actividad,
+        S.Estado
     FROM @ActividadesSeed S
     INNER JOIN dbo.Tipo_Actividad TA
         ON TA.Nombre_Tipo = S.Nombre_Tipo;
@@ -678,64 +736,58 @@ BEGIN TRY
 
 /* ============================================================
    11. CITAS
-   Estado permitido: Pendiente / Atendida
-   Horario permitido: 08:00 a 17:00
+   - Atendidas: fechas pasadas.
+   - Pendientes: fechas futuras.
+   - Horario permitido por la BD: 08:00 a 17:00.
    ============================================================ */
 
 ;WITH Usuarios AS
 (
     SELECT
-        Id_Usuario,
-        ROW_NUMBER() OVER (ORDER BY Id_Usuario) AS RN
+        UBase.Id_Usuario,
+        ROW_NUMBER() OVER (ORDER BY UBase.Id_Usuario) AS RN
     FROM dbo.Usuario AS UBase
     INNER JOIN @IdsUsuariosSeed AS IDS
         ON IDS.UsuarioSeedId = UBase.Id_Usuario
-    WHERE Id_Rol = 2
-      AND Estado = 'A'
+    WHERE UBase.Id_Rol = 2
+      AND UBase.Estado = 'A'
 ),
-Encargados AS
+Numeros AS
 (
-    SELECT
-        Id_Usuario,
-        ROW_NUMBER() OVER (ORDER BY Id_Usuario) AS RN
-    FROM dbo.Usuario AS UBase
-    INNER JOIN @IdsUsuariosSeed AS IDS
-        ON IDS.UsuarioSeedId = UBase.Id_Usuario
-    WHERE Id_Rol = 2
-      AND Estado = 'A'
+    SELECT TOP (40)
+        ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS N
+    FROM sys.all_objects
 ),
 DatosCitas AS
 (
     SELECT
-        U.RN,
+        N.N AS RN,
         U.Id_Usuario AS Id_Usuario_Cita,
-
         CASE
-            WHEN U.RN % 4 = 0
-                THEN @IdAdmin
+            WHEN N.N % 4 = 0 THEN @IdAdmin
             ELSE E.Id_Usuario
         END AS Id_Usuario_Encargado,
-
-        -- Distribuye las citas entre diferentes fechas
-        DATEADD(
-            DAY,
-            ((U.RN - 1) / 10) + 1,
-            CAST(GETDATE() AS DATE)
-        ) AS Fecha_Cita,
-
-        -- Genera horas desde las 08:00 hasta las 17:00
+        CASE
+            WHEN N.N <= 24
+                THEN DATEADD(DAY, -(N.N * 4), CAST(GETDATE() AS DATE))
+            ELSE DATEADD(DAY, (N.N - 24) * 2, CAST(GETDATE() AS DATE))
+        END AS Fecha_Cita,
         CAST(
             DATEADD(
                 HOUR,
-                (U.RN - 1) % 10,
+                ((N.N - 1) % 10),
                 CAST('08:00:00' AS DATETIME)
             ) AS TIME(0)
-        ) AS Hora_Cita
-
-    FROM Usuarios U
-    INNER JOIN Encargados E
-        ON E.RN = ((U.RN + 6) % @TotalUsuarios) + 1
-    WHERE U.RN <= 25
+        ) AS Hora_Cita,
+        CASE
+            WHEN N.N <= 24 THEN 'Atendida'
+            ELSE 'Pendiente'
+        END AS Estado
+    FROM Numeros N
+    INNER JOIN Usuarios U
+        ON U.RN = ((N.N - 1) % @TotalUsuarios) + 1
+    INNER JOIN Usuarios E
+        ON E.RN = ((N.N + 6) % @TotalUsuarios) + 1
 )
 INSERT INTO dbo.Citas
 (
@@ -748,39 +800,26 @@ INSERT INTO dbo.Citas
     Estado
 )
 SELECT
-    Fecha_Cita,
-    Hora_Cita,
-    Id_Usuario_Cita,
-    Id_Usuario_Encargado,
-
-    CASE
-        WHEN RN % 5 = 0
-            THEN 'Solicitud de apoyo familiar.'
-        WHEN RN % 5 = 1
-            THEN 'Consulta sobre participacion en ministerio.'
-        WHEN RN % 5 = 2
-            THEN 'Solicitud de acompañamiento espiritual.'
-        WHEN RN % 5 = 3
-            THEN 'Consulta sobre actividades disponibles.'
-        ELSE
-            'Solicitud de orientacion general.'
+    D.Fecha_Cita,
+    D.Hora_Cita,
+    D.Id_Usuario_Cita,
+    D.Id_Usuario_Encargado,
+    CASE D.RN % 6
+        WHEN 0 THEN 'Solicitud de apoyo familiar.'
+        WHEN 1 THEN 'Consulta sobre participación en un ministerio.'
+        WHEN 2 THEN 'Solicitud de acompañamiento espiritual.'
+        WHEN 3 THEN 'Consulta sobre actividades disponibles.'
+        WHEN 4 THEN 'Solicitud de orientación general.'
+        ELSE 'Solicitud de seguimiento personal.'
     END,
-
     CASE
-        WHEN RN % 3 = 0
-            THEN 'Cita atendida y registrada con seguimiento.'
+        WHEN D.Estado = 'Atendida'
+            THEN 'Cita atendida. Se registró seguimiento y observaciones.'
         ELSE
-            'Cita pendiente de revision por administracion.'
+            'Cita pendiente de atención y confirmación administrativa.'
     END,
-
-    CASE
-        WHEN RN % 3 = 0
-            THEN 'Atendida'
-        ELSE
-            'Pendiente'
-    END
-
-FROM DatosCitas;
+    D.Estado
+FROM DatosCitas D;
 
     /* ============================================================
        12. ERRORES DE EJEMPLO
@@ -1014,4 +1053,19 @@ UNION ALL SELECT 'Usuarios_Ministerio', COUNT(*) FROM dbo.Usuarios_Ministerio
 UNION ALL SELECT 'Citas', COUNT(*) FROM dbo.Citas
 UNION ALL SELECT 'Error', COUNT(*) FROM dbo.Error
 UNION ALL SELECT 'Chat_Bot_Opciones', COUNT(*) FROM dbo.Chat_Bot_Opciones;
+GO
+
+SELECT Estado, COUNT(*) AS Total
+FROM dbo.Citas
+GROUP BY Estado
+ORDER BY Estado;
+GO
+
+SELECT Estado, COUNT(*) AS Total
+FROM dbo.Actividad
+GROUP BY Estado
+ORDER BY Estado;
+GO
+
+EXEC dbo.spConsultarDashboard;
 GO
