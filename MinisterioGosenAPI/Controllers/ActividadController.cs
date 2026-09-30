@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
@@ -13,9 +14,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarActividadesAPI")]
         public IActionResult ListarActividadesAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<ActividadModel>("spListarActividades").ToList();
+            var response = context.Query<ActividadModel>("SELECT * FROM spListarActividades()").ToList();
 
             return Ok(response);
         }
@@ -23,12 +24,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerActividadAPI")]
         public IActionResult ObtenerActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Actividad", id);
 
-            var response = context.QueryFirstOrDefault<ActividadModel>("spObtenerActividad", parameters);
+            var response = context.QueryFirstOrDefault<ActividadModel>("SELECT * FROM spObtenerActividad(@Id_Actividad)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -39,7 +40,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("CrearActividadAPI")]
         public IActionResult CrearActividadAPI(ActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
@@ -50,7 +51,15 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Hora_Fin", model.Hora_Fin);
             parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
-            var idActividad = context.QueryFirstOrDefault<int>("spCrearActividad", parameters);
+            var idActividad = context.QuerySingle<int>(
+                                        @"SELECT spCrearActividad(
+                                        @Nombre_Actividad,
+                                        @Fecha_Ini,
+                                        @Fecha_Fin,
+                                        @Lugar,
+                                        @Hora_Ini,
+                                        @Hora_Fin,
+                                        @Id_Tipo_Actividad)",parameters);
 
             if (idActividad > 0)
             {
@@ -61,7 +70,10 @@ namespace MinisterioGosenAPI.Controllers
                     parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
                     parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
 
-                    context.Execute("spGuardarMinisterioActividad", parametersMinisterio);
+                    context.Execute(@"CALL spGuardarMinisterioActividad(
+                                                   @Id_Actividad,
+                                                   @Id_Ministerio,
+                                                   @Observacion)", parametersMinisterio);
                 }
 
                 return Ok(idActividad);
@@ -73,7 +85,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActualizarActividadAPI")]
         public IActionResult ActualizarActividadAPI(ActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Actividad", model.Id_Actividad);
@@ -85,7 +97,15 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Hora_Fin", model.Hora_Fin);
             parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
-            var response = context.Execute("spActualizarActividad", parameters);
+            var response = context.Execute(@"CALL spActualizarActividad(
+                                        @Id_Actividad,
+                                        @Nombre_Actividad,
+                                        @Fecha_Ini,
+                                        @Fecha_Fin,
+                                        @Lugar,
+                                        @Hora_Ini,
+                                        @Hora_Fin,
+                                        @Id_Tipo_Actividad)",parameters);
 
             if (response > 0)
             {
@@ -96,14 +116,17 @@ namespace MinisterioGosenAPI.Controllers
                     parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
                     parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
 
-                    context.Execute("spGuardarMinisterioActividad", parametersMinisterio);
+                    context.Execute(@"CALL spGuardarMinisterioActividad(
+                                        @Id_Actividad,
+                                        @Id_Ministerio,
+                                        @Observacion)",parametersMinisterio);
                 }
                 else
                 {
                     var parametersEliminarMinisterio = new DynamicParameters();
                     parametersEliminarMinisterio.Add("@Id_Actividad", model.Id_Actividad);
 
-                    context.Execute("spEliminarMinisterioPorActividad", parametersEliminarMinisterio);
+                    context.Execute("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersEliminarMinisterio);
                 }
 
                 return Ok(response);
@@ -115,19 +138,19 @@ namespace MinisterioGosenAPI.Controllers
         [HttpDelete("EliminarActividadAPI")]
         public IActionResult EliminarActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             try
             {
                 var parametersMinisterio = new DynamicParameters();
                 parametersMinisterio.Add("@Id_Actividad", id);
 
-                context.Execute("spEliminarMinisterioPorActividad", parametersMinisterio);
+                context.Execute("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersMinisterio);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Actividad", id);
 
-                var response = context.Execute("spEliminarActividad", parameters);
+                var response = context.Execute("CALL spEliminarActividad(@Id_Actividad)", parameters);
 
                 if (response > 0)
                     return Ok(response);
@@ -143,12 +166,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("InactivarActividadAPI")]
         public IActionResult InactivarActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Actividad", id);
 
-            var response = context.Execute("spInactivarActividad", parameters);
+            var response = context.Execute("CALL spInactivarActividad(@Id_Actividad)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -159,12 +182,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActivarActividadAPI")]
         public IActionResult ActivarActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Actividad", id);
 
-            var response = context.Execute("spActivarActividad", parameters);
+            var response = context.Execute("CALL spActivarActividad(@Id_Actividad)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -175,7 +198,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("ReporteActividadesAPI")]
         public IActionResult ReporteActividadesAPI(ReporteActividadesFiltroModel filtros)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Buscar", filtros.Buscar);
@@ -185,9 +208,14 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@FechaFin", filtros.FechaFin);
 
             var response = context.Query<ActividadModel>(
-                "spReporteActividades",
-                parameters,
-                commandType: CommandType.StoredProcedure
+                @"SELECT * FROM spReporteActividades(
+                      @Buscar,
+                      @Id_Ministerio,
+                      @Id_Tipo_Actividad,
+                      @FechaInicio,
+                      @FechaFin
+                  )",
+                parameters
             ).ToList();
 
             return Ok(response);
@@ -196,7 +224,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("ReporteHorariosAPI")]
         public IActionResult ReporteHorariosAPI(ReporteHorariosFiltroModel filtros)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Buscar", filtros.Buscar);
@@ -206,15 +234,18 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@FechaFin", filtros.FechaFin);
 
             var response = context.Query<ActividadModel>(
-                "spReporteHorarios",
-                parameters,
-                commandType: CommandType.StoredProcedure
+                @"SELECT * FROM spReporteHorarios(
+                      @Buscar,
+                      @Id_Ministerio,
+                      @Id_Tipo_Actividad,
+                      @FechaInicio,
+                      @FechaFin
+                  )",
+                parameters
             ).ToList();
 
             return Ok(response);
         }
-
-
 
     }
 }

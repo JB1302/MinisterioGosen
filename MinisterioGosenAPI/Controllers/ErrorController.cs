@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Npgsql;
 using System.Linq.Expressions;
 
 namespace MinisterioGosen.Controllers
@@ -16,7 +17,7 @@ namespace MinisterioGosen.Controllers
         {
             var ex = HttpContext.Features.Get<IExceptionHandlerFeature>();
 
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Mensaje", ex?.Error.Message);
@@ -24,7 +25,12 @@ namespace MinisterioGosen.Controllers
             parameters.Add("@FechaHora", DateTime.Now);
             parameters.Add("@Id_Usuario", 0);
 
-            var response = context.Execute("spRegistrarError", parameters);
+            var response = context.Execute(
+                                    @"CALL spRegistrarError(
+                                        @Mensaje,
+                                        @Lugar,
+                                        @FechaHora,
+                                        @Id_Usuario)",parameters);
             return StatusCode(500, "Se presentó un inconveniente técnico");
         }
     }

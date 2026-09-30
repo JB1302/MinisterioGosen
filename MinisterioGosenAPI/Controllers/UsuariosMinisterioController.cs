@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using System.Data;
+using Npgsql;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -13,13 +14,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarUsuariosPorMinisterioAPI")]
         public IActionResult ListarUsuariosPorMinisterioAPI(int idMinisterio)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", idMinisterio);
 
             var response = context.Query<UsuariosMinisterioModel>(
-                "spListarUsuariosPorMinisterio", parameters).ToList();
+                "SELECT * FROM spListarUsuariosPorMinisterio(@Id_Ministerio)", parameters).ToList();
 
             return Ok(response);
         }
@@ -27,13 +28,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarUsuariosDisponiblesMinisterioAPI")]
         public IActionResult ListarUsuariosDisponiblesMinisterioAPI(int idMinisterio)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", idMinisterio);
 
             var response = context.Query<UsuarioResponseModel>(
-                "spListarUsuariosDisponiblesMinisterio", parameters).ToList();
+                "SELECT * FROM spListarUsuariosDisponiblesMinisterio(@Id_Ministerio)", parameters).ToList();
 
             return Ok(response);
         }
@@ -41,13 +42,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarMinisteriosPorUsuarioAPI")]
         public IActionResult ListarMinisteriosPorUsuarioAPI(int idUsuario)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", idUsuario);
 
             var response = context.Query<UsuariosMinisterioModel>(
-                "spListarMinisteriosPorUsuario", parameters).ToList();
+                "SELECT * FROM spListarMinisteriosPorUsuario(@Id_Usuario)", parameters).ToList();
 
             return Ok(response);
         }
@@ -55,13 +56,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarMinisteriosDisponiblesUsuarioAPI")]
         public IActionResult ListarMinisteriosDisponiblesUsuarioAPI(int idUsuario)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", idUsuario);
 
             var response = context.Query<MinisterioModel>(
-                "spListarMinisteriosDisponiblesUsuario", parameters).ToList();
+                "SELECT * FROM spListarMinisteriosDisponiblesUsuario(@Id_Usuario)", parameters).ToList();
 
             return Ok(response);
         }
@@ -69,7 +70,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("CrearUsuarioMinisterioAPI")]
         public IActionResult CrearUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", model.Id_Ministerio);
@@ -78,7 +79,12 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Estado", model.Estado);
             parameters.Add("@Observacion", model.Observacion);
 
-            var response = context.Execute("spCrearUsuarioMinisterio", parameters);
+            var response = context.Execute(@"CALL spCrearUsuarioMinisterio(
+                                                            @Id_Ministerio,
+                                                            @Id_Usuario,
+                                                            @Fecha_Ingreso,
+                                                            @Estado,
+                                                            @Observacion)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -89,14 +95,17 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActualizarUsuarioMinisterioAPI")]
         public IActionResult ActualizarUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
             parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
             parameters.Add("@Observacion", model.Observacion);
 
-            var response = context.Execute("spEditarUsuarioMinisterio", parameters);
+            var response = context.Execute(@"CALL spEditarUsuarioMinisterio(
+                                                            @Id_Usuario_Ministerio,
+                                                            @Fecha_Ingreso,
+                                                            @Observacion)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -107,12 +116,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("SalirUsuarioMinisterioAPI")]
         public IActionResult SalirUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
 
-            var response = context.Execute("spSalirUsuarioMinisterio", parameters);
+            var response = context.Execute("CALL spSalirUsuarioMinisterio(@Id_Usuario_Ministerio)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -123,7 +132,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("ReportePersonasMinisterioAPI")]
         public IActionResult ReportePersonasMinisterioAPI(ReportePersonasMinisterioFiltroModel filtros)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Buscar", filtros.Buscar);
@@ -132,16 +141,15 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@FechaInicio", filtros.FechaInicio);
             parameters.Add("@FechaFin", filtros.FechaFin);
 
-            var response = context.Query<UsuariosMinisterioModel>(
-                "spReportePersonasMinisterio",
-                parameters,
-                commandType: CommandType.StoredProcedure
-            ).ToList();
+            var response = context.Query<UsuariosMinisterioModel>(@"SELECT * FROM spReportePersonasMinisterio(
+                                                                                                @Buscar,
+                                                                                                @Id_Ministerio,
+                                                                                                @Estado,
+                                                                                                @FechaInicio,
+                                                                                                @FechaFin)",parameters).ToList();
 
             return Ok(response);
         }
-
-
 
     }
 }

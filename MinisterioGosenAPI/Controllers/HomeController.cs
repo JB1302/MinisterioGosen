@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using MinisterioGosenAPI.Services;
+using Npgsql;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -14,7 +15,7 @@ namespace MinisterioGosenAPI.Controllers
         public async Task<IActionResult> RegistrarAPI(
             RegistroUsuarioRequestModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Nombre", model.Nombre);
@@ -22,7 +23,11 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Correo", model.Correo);
             parameters.Add("@Contrasena", model.Contrasena);
 
-            var response = context.Execute("spRegistrarUsuario",parameters);
+            var response = context.Execute(@"CALL spRegistrarUsuario(
+                                                                @Identificacion,
+                                                                @Nombre,
+                                                                @Correo,
+                                                                @Contrasena)", parameters);
 
             if (response > 0)
             {
@@ -42,12 +47,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("IniciarSesionAPI")]
         public IActionResult IniciarSesionAPI(InicioSesionUsuarioRequestModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Correo", model.Correo);
             parameters.Add("@Contrasena", model.Contrasena);
-            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("spIniciarSesionUsuario", parameters);
+            var response = context.QueryFirstOrDefault<UsuarioResponseModel>(@"SELECT * FROM spIniciarSesionUsuario(@Correo)", parameters);
 
             if (response != null && BCrypt.Net.BCrypt.Verify(model.Contrasena, response.Contrasena))
             {
@@ -61,11 +66,11 @@ namespace MinisterioGosenAPI.Controllers
         public async Task<IActionResult> RecuperarAccesoAPI(RecuperarAccesoRequestModel model)
         {
             //1. Validar que el correo exista en la base de datos
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Correo", model.Correo);
-            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("spValidarCorreo", parameters);
+            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("SELECT * FROM spValidarCorreo(@Correo)", parameters);
 
             if (response == null)
                 return NotFound("No se ha validado su información correctamente");
@@ -78,7 +83,11 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Id_Usuario", response.Id_Usuario);
             parameters.Add("@Contrasena", temporalCifrada);
             parameters.Add("@IndicadorTemp", true);
-            var update = context.Execute("spActualizarContrasenna", parameters);
+            var update = context.Execute(
+                                @"CALL spActualizarContrasenna(
+                                    @Id_Usuario,
+                                    @Contrasena,
+                                    @IndicadorTemp)",parameters);
 
             if (update > 0)
             {

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
@@ -14,7 +15,7 @@ namespace MinisterioGosenAPI.Controllers
         [Route("ConsultarChatbotAPI")]
         public IActionResult ConsultarChatbotAPI(int? idOpcion = null)
         {
-            using var context = new SqlConnection(
+            using var context = new NpgsqlConnection(
                 _configuration.GetConnectionString("DefaultConnection")
             );
 

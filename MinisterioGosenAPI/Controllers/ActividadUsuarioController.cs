@@ -1,8 +1,9 @@
-﻿using System.Data;
-using Dapper;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
+using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -13,7 +14,7 @@ namespace MinisterioGosenAPI.Controllers
 		[HttpGet("ListarActividadUsuarioAPI")]
 		public IActionResult ListarActividadUsuarioAPI(int? idUsuario = null, int? idActividad = null)
 		{
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 
 			if (idUsuario.HasValue)
@@ -22,23 +23,29 @@ namespace MinisterioGosenAPI.Controllers
 			if (idActividad.HasValue)
 				parameters.Add("@Id_Actividad", idActividad.Value);
 
-			var response = context.Query<ActividadUsuarioModel>(
-				"spListarActividadUsuario",
-				parameters,
-				commandType: CommandType.StoredProcedure
+            var response = context.Query<ActividadUsuarioModel>(
+				@"SELECT *
+				  FROM spListarActividadUsuario(
+					  @Id_Usuario,
+					  @Id_Actividad)",
+				new
+				{
+					Id_Usuario = idUsuario,
+					Id_Actividad = idActividad
+				}
 			).ToList();
 
-			return Ok(response);
+            return Ok(response);
 		}
 
 		[HttpGet("ObtenerActividadUsuarioAPI")]
 		public IActionResult ObtenerActividadUsuarioAPI(int id)
 		{
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad_Usuario", id);
 
-			var response = context.QueryFirstOrDefault<ActividadUsuarioModel>("spObtenerActividadUsuario", parameters);
+			var response = context.QueryFirstOrDefault<ActividadUsuarioModel>("SELECT * FROM spObtenerActividadUsuario(@Id_Actividad_Usuario)", parameters);
 
 			if (response != null)
 				return Ok(response);
@@ -58,16 +65,21 @@ namespace MinisterioGosenAPI.Controllers
 			if (model.Fecha.Date < DateTime.Today)
 				return BadRequest(new { Success = false, Message = "La fecha no puede ser anterior a la actual" });
 
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad", model.Id_Actividad);
 			parameters.Add("@Id_Usuario", model.Id_Usuario);
 			parameters.Add("@Fecha", model.Fecha);
 			parameters.Add("@Hora", model.Hora);
 
-			var idActividadUsuario = context.QuerySingle<int>("spCrearActividadUsuario", parameters, commandType: CommandType.StoredProcedure);
+            var idActividadUsuario = context.QuerySingle<int>(
+						@"SELECT spCrearActividadUsuario(
+							@Id_Actividad,
+							@Id_Usuario,
+							@Fecha,
+							@Hora)",parameters);
 
-			if (idActividadUsuario > 0)
+            if (idActividadUsuario > 0)
 			{
 				return Ok(new
 				{
@@ -89,7 +101,7 @@ namespace MinisterioGosenAPI.Controllers
 			if (model.Id_Actividad_Usuario <= 0)
 				return BadRequest(new { Success = false, Message = "El identificador de la participación es obligatorio" });
 
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad_Usuario", model.Id_Actividad_Usuario);
 			parameters.Add("@Id_Actividad", model.Id_Actividad);
@@ -97,22 +109,32 @@ namespace MinisterioGosenAPI.Controllers
 			parameters.Add("@Fecha", model.Fecha);
 			parameters.Add("@Hora", model.Hora);
 
-			var response = context.Execute("spActualizarActividadUsuario", parameters);
+			var response = context.Execute(
+					@"CALL spActualizarActividadUsuario(
+						@Id_Actividad_Usuario,
+						@Id_Actividad,
+						@Id_Usuario,
+						@Fecha,
+						@Hora
+					)",parameters);
 
-			if (response > 0)
-				return Ok(new { Success = true, Message = "Participación actualizada correctamente" });
+			return Ok(new
+			{
+				Success = true,
+				Message = "Participación actualizada correctamente"
+			});
 
-			return BadRequest(new { Success = false, Message = "No se ha actualizado la participación" });
-		}
+            //return BadRequest(new { Success = false, Message = "No se ha actualizado la participación" });
+        }
 
 		[HttpDelete("EliminarActividadUsuarioAPI")]
 		public IActionResult EliminarActividadUsuarioAPI(int id)
 		{
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad_Usuario", id);
 
-			var response = context.Execute("spEliminarActividadUsuario", parameters);
+			var response = context.Execute("CALL spEliminarActividadUsuario(@Id_Actividad_Usuario)", parameters);
 
 			if (response > 0)
 				return Ok(new { Success = true, Message = "Participación eliminada correctamente" });

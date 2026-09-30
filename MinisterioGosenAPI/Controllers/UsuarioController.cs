@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Npgsql;
 using MinisterioGosenAPI.Models;
 using System.Data;
 
@@ -16,7 +17,7 @@ namespace MinisterioGosenAPI.Controllers
         {
             model.Contrasena = BCrypt.Net.BCrypt.HashPassword(model.Contrasena);
 
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
 
@@ -24,7 +25,7 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Id_Usuario", model.Id_Usuario);
             parameters.Add("@Contrasena", model.Contrasena);
             parameters.Add("@IndicadorTemp", false);
-            var response = context.Execute("spActualizarContrasenna", parameters);
+            var response = context.Execute(@"CALL spActualizarContrasenna(@Id_Usuario,@Contrasena,@IndicadorTemp)", parameters);
 
             if (response > 0)
             {
@@ -37,7 +38,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("CambiarPerfilAPI")]
         public IActionResult CambiarPerfilAPI(ActualizarPerfilRequestModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
 
@@ -46,7 +47,7 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Identificacion", model.Identificacion);
             parameters.Add("@Nombre", model.Nombre);
             parameters.Add("@Correo", model.Correo);
-            var response = context.Execute("spActualizarPerfil", parameters);
+            var response = context.Execute(@"CALL spActualizarPerfil(@Id_Usuario,@Identificacion,@Nombre,@Correo)", parameters);
 
             if (response > 0)
             {
@@ -59,9 +60,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarRolesAPI")]
         public IActionResult ListarRolesAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<RolResponseModel>("spListarRoles").ToList();
+            var response = context.Query<RolResponseModel>("SELECT * FROM spListarRoles()").ToList();
 
             return Ok(response);
         }
@@ -69,9 +70,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarUsuariosAPI")]
         public IActionResult ListarUsuariosAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<UsuarioResponseModel>("spListarUsuarios").ToList();
+            var response = context.Query<UsuarioResponseModel>("SELECT * FROM spListarUsuarios()").ToList();
 
             return Ok(response);
         }
@@ -79,12 +80,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerUsuarioAPI")]
         public IActionResult ObtenerUsuarioAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", id);
 
-            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("spObtenerUsuario", parameters);
+            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("SELECT * FROM spObtenerUsuario(@Id_Usuario)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -95,7 +96,7 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActualizarUsuarioAPI")]
         public IActionResult ActualizarUsuarioAPI(UsuarioResponseModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", model.Id_Usuario);
@@ -104,7 +105,12 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Estado", model.Estado);
             parameters.Add("@Id_Rol", model.Id_Rol);
 
-            var response = context.Execute("spActualizarUsuario", parameters);
+            var response = context.Execute(@"CALL spActualizarUsuario(
+                                                        @Id_Usuario,
+                                                        @Nombre,
+                                                        @Correo,
+                                                        @Estado,
+                                                        @Id_Rol)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -115,13 +121,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("DesactivarUsuarioAPI")]
         public IActionResult DesactivarUsuarioAPI(UsuarioEstadoRequestModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", model.Id_Usuario);
 
-            var response = context.Execute(
-                "spDesactivarUsuario", parameters);
+            var response = context.Execute("CALL spDesactivarUsuario(@Id_Usuario)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -132,13 +137,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActivarUsuarioAPI")]
         public IActionResult ActivarUsuarioAPI(UsuarioEstadoRequestModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Usuario", model.Id_Usuario);
 
-            var response = context.Execute(
-                "spActivarUsuario", parameters);
+            var response = context.Execute("CALL spActivarUsuario(@Id_Usuario)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -151,7 +155,7 @@ namespace MinisterioGosenAPI.Controllers
         {
             model.Contrasena = BCrypt.Net.BCrypt.HashPassword(model.Contrasena);
 
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Identificacion", model.Identificacion);
@@ -161,7 +165,13 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Estado", "A");
             parameters.Add("@Id_Rol", model.Id_Rol);
 
-            var response = context.Execute("spCrearUsuario", parameters);
+            var response = context.Execute(@"CALL spCrearUsuario(
+                                                        @Identificacion,
+                                                        @Nombre,
+                                                        @Correo,
+                                                        @Contrasena,
+                                                        @Estado,
+                                                        @Id_Rol)", parameters);
 
             if (response > 0)
                 return Ok(response);

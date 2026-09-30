@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
@@ -13,12 +14,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarCitasAPI")]
         public async Task<IActionResult> ListarCitasAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = await context.QueryAsync<CitasModel>(
-                "spListarCitas",
-                commandType: CommandType.StoredProcedure
-            );
+            var response = await context.QueryAsync<CitasModel>("SELECT * FROM spListarCitas()");
 
             return Ok(response);
         }
@@ -26,16 +24,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerCitaAPI")]
         public async Task<IActionResult> ObtenerCitaAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Cita", id);
 
             var response = await context.QueryFirstOrDefaultAsync<CitasModel>(
-                "spObtenerCita",
-                parameters,
-                commandType: CommandType.StoredProcedure
-            );
+                "SELECT * FROM spObtenerCita(@Id_Cita)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -48,7 +43,7 @@ namespace MinisterioGosenAPI.Controllers
         {
             try
             {
-                using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+                using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Fecha_Cita", model.Fecha_Cita);
@@ -58,11 +53,16 @@ namespace MinisterioGosenAPI.Controllers
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
-                var idCita = await context.QueryFirstOrDefaultAsync<int>(
-                    "spCrearCita",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                );
+                var idCita =
+                        await context.QuerySingleAsync<int>(
+                            @"SELECT spCrearCita(
+                                @Fecha_Cita,
+                                @Hora_Cita,
+                                @Id_Usuario_Cita,
+                                @Id_Usuario_Encargado,
+                                @Observacion_Inicial,
+                                @Detalle_Cita
+                            )",parameters);
 
                 if (idCita > 0)
                     return Ok(new { Id_Cita = idCita });
@@ -85,7 +85,7 @@ namespace MinisterioGosenAPI.Controllers
         {
             try
             {
-                using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+                using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", model.Id_Cita);
@@ -97,10 +97,14 @@ namespace MinisterioGosenAPI.Controllers
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
                 var rowsAffected = await context.ExecuteAsync(
-                    "spActualizarCita",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                );
+                                            @"CALL spActualizarCita(
+                                                @Id_Cita,
+                                                @Fecha_Cita,
+                                                @Hora_Cita,
+                                                @Id_Usuario_Cita,
+                                                @Id_Usuario_Encargado,
+                                                @Observacion_Inicial,
+                                                @Detalle_Cita)", parameters);
 
                 if (rowsAffected > 0)
                     return Ok(rowsAffected);
@@ -122,17 +126,16 @@ namespace MinisterioGosenAPI.Controllers
         {
             try
             {
-                using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+                using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", model.Id_Cita);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
                 var rowsAffected = await context.ExecuteAsync(
-                    "spAtenderCita",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                );
+                                        @"CALL spAtenderCita(
+                                            @Id_Cita,
+                                            @Detalle_Cita)",parameters);
 
                 if (rowsAffected > 0)
                     return Ok(rowsAffected);
@@ -154,23 +157,20 @@ namespace MinisterioGosenAPI.Controllers
         {
             try
             {
-                using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+                using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", id);
 
                 var rowsAffected = await context.ExecuteAsync(
-                    "spEliminarCita",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                );
+                                        "CALL spEliminarCita(@Id_Cita)", parameters);
 
                 if (rowsAffected > 0)
                     return Ok(rowsAffected);
 
                 return BadRequest("No se ha eliminado la cita.");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
                 return BadRequest(ex.Message);
             }

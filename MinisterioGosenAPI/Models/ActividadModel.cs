@@ -16,7 +16,7 @@ namespace MinisterioGosenAPI.Models
         public DateTime Fecha_Ini { get; set; } = DateTime.Today;
 
         [DataType(DataType.Date)]
-        public DateTime? Fecha_Fin { get; set; }
+        public DateOnly? Fecha_Fin { get; set; }
 
         [StringLength(100, ErrorMessage = "El lugar no puede superar 100 caracteres")]
         public string? Lugar { get; set; }

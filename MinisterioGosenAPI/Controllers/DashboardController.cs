@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 using System.Data;
 
 namespace MinisterioGosen.Controllers
@@ -18,7 +19,7 @@ namespace MinisterioGosen.Controllers
             {
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
 
-                await using var connection = new SqlConnection(connectionString);
+                await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync();
                 using var resultados = await connection.QueryMultipleAsync("spConsultarDashboard");
 

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -12,9 +13,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarTiposActividadAPI")]
         public IActionResult ListarTiposActividadAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<TipoActividadModel>("spListarTiposActividad").ToList();
+            var response = context.Query<TipoActividadModel>("SELECT * FROM spListarTiposActividad()").ToList();
 
             return Ok(response);
         }
@@ -22,12 +23,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerTipoActividadAPI")]
         public IActionResult ObtenerTipoActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Tipo_Actividad", id);
 
-            var response = context.QueryFirstOrDefault<TipoActividadModel>("spObtenerTipoActividad", parameters);
+            var response = context.QueryFirstOrDefault<TipoActividadModel>("SELECT * FROM spObtenerTipoActividad(@Id_Tipo_Actividad)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -38,12 +39,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("CrearTipoActividadAPI")]
         public IActionResult CrearTipoActividadAPI(TipoActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
 
-            var response = context.Execute("spCrearTipoActividad", parameters);
+            var response = context.Execute("CALL spCrearTipoActividad(@Nombre_Tipo)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -54,13 +55,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPut("ActualizarTipoActividadAPI")]
         public IActionResult ActualizarTipoActividadAPI(TipoActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
             parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
 
-            var response = context.Execute("spActualizarTipoActividad", parameters);
+            var response = context.Execute(@"CALL spActualizarTipoActividad(@Id_Tipo_Actividad,@Nombre_Tipo)", parameters);
 
             if (response > 0)
                 return Ok(response);
@@ -71,13 +72,13 @@ namespace MinisterioGosenAPI.Controllers
         [HttpDelete("EliminarTipoActividadAPI")]
         public IActionResult EliminarTipoActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Tipo_Actividad", id);
 
             try{
-                var response = context.Execute("spEliminarTipoActividad", parameters);
+                var response = context.Execute("CALL spEliminarTipoActividad(@Id_Tipo_Actividad)", parameters);
 
                 if (response > 0)
                     return Ok(response);

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -12,9 +13,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarMinisteriosAPI")]
         public IActionResult ListarMinisteriosAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<MinisterioModel>("spListarMinisterios").ToList();
+            var response = context.Query<MinisterioModel>("SELECT * FROM spListarMinisterios()").ToList();
 
             return Ok(response);
         }
@@ -22,12 +23,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerMinisterioAPI")]
         public IActionResult ObtenerMinisterioAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", id);
 
-            var response = context.QueryFirstOrDefault<MinisterioModel>("spObtenerMinisterio", parameters);
+            var response = context.QueryFirstOrDefault<MinisterioModel>("SELECT * FROM spObtenerMinisterio(@Id_Ministerio)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -38,49 +39,53 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("CrearMinisterioAPI")]
         public IActionResult CrearMinisterioAPI(MinisterioModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
             parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
 
-            var response = context.Execute("spCrearMinisterio", parameters);
+            var response = context.Execute(@"CALL spCrearMinisterio(@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
 
-            if (response > 0)
-                return Ok(response);
+            return Ok(1);
+            //if (response > 0)
+            //    return Ok(response);
 
-            return BadRequest("No se ha registrado el ministerio");
+            //return BadRequest("No se ha registrado el ministerio");
         }
 
         [HttpPut("ActualizarMinisterioAPI")]
         public IActionResult ActualizarMinisterioAPI(MinisterioModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", model.Id_Ministerio);
             parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
             parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
 
-            var response = context.Execute("spActualizarMinisterio", parameters);
+            var response = context.Execute(@"CALL spActualizarMinisterio(@Id_Ministerio,@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
 
-            if (response > 0)
-                return Ok(response);
+            return Ok(1);
+            //if (response > 0)
+            //    return Ok(response);
 
-            return BadRequest("No se ha actualizado el ministerio");
+            //return BadRequest("No se ha actualizado el ministerio");
         }
 
         [HttpDelete("EliminarMinisterioAPI")]
         public IActionResult EliminarMinisterioAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Ministerio", id);
 
             try
             {
-                var response = context.Execute("spEliminarMinisterio", parameters);
+                var response = context.Execute("CALL spEliminarMinisterio(@Id_Ministerio)",parameters);
+
+                //return Ok(1);
 
                 if (response > 0)
                     return Ok(response);
