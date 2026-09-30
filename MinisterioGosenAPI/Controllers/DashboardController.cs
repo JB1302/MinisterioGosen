@@ -47,13 +47,6 @@ namespace MinisterioGosen.Controllers
                     """
                 );
 
-                if (row == null)
-                {
-                    return NotFound(new
-                    {
-                        mensaje = "No se encontró información para el dashboard."
-                    });
-                }
 
                 var jsonOptions = new JsonSerializerOptions
                 {

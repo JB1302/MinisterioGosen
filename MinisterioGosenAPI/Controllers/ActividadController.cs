@@ -180,21 +180,44 @@ namespace MinisterioGosenAPI.Controllers
         [HttpDelete("EliminarActividadAPI")]
         public async Task<IActionResult> EliminarActividadAPI(int id)
         {
-            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(
+                _config["ConnectionStrings:DefaultConnection"]
+            );
 
             try
             {
-                var parametersMinisterio = new DynamicParameters();
-                parametersMinisterio.Add("@Id_Actividad", id);
+                await context.OpenAsync();
 
-                await context.ExecuteAsync("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersMinisterio);
+                await using var transaction =
+                    await context.BeginTransactionAsync();
 
-                var parameters = new DynamicParameters();
-                parameters.Add("@Id_Actividad", id);
+                try
+                {
+                    var parametersMinisterio = new DynamicParameters();
+                    parametersMinisterio.Add("@Id_Actividad", id);
 
-                await context.ExecuteAsync("CALL spEliminarActividad(@Id_Actividad)", parameters);
+                    await context.ExecuteAsync(
+                        "CALL spEliminarMinisterioPorActividad(@Id_Actividad)",
+                        parametersMinisterio
+                    );
 
-                return Ok("Actividad eliminada correctamente");
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@Id_Actividad", id);
+
+                    await context.ExecuteAsync(
+                        "CALL spEliminarActividad(@Id_Actividad)",
+                        parameters
+                    );
+
+                    await transaction.CommitAsync();
+
+                    return Ok("Actividad eliminada correctamente");
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (PostgresException ex)
             {
@@ -202,13 +225,13 @@ namespace MinisterioGosenAPI.Controllers
             }
             catch (NpgsqlException ex)
             {
-                return BadRequest("No se puede eliminar esta actividad porque tiene información relacionada.");
+                return StatusCode(500, ex.Message);
             }
             catch (Exception ex)
             {
-                return BadRequest("No se puede eliminar esta actividad porque tiene información relacionada.");
+                return StatusCode(500, ex.Message);
             }
-        }
+        }        
 
         [HttpPut("InactivarActividadAPI")]
         public async Task<IActionResult> InactivarActividadAPI(int id)

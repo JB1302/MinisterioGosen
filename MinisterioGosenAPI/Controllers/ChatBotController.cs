@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
 using Npgsql;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace MinisterioGosenAPI.Controllers
 {

@@ -1,9 +1,3 @@
--- =============================================================
--- Ministerio Gosen - Migracion de procedimientos SQL Server a PostgreSQL
--- Ejecutar DESPUES de ministerio_gosen_postgresql_base.sql
--- Incluye 70 rutinas unicas del script SQL Server original.
--- PostgreSQL: consultas => FUNCTIONS; operaciones => PROCEDURES.
--- =============================================================
 
 BEGIN;
 
@@ -14,7 +8,9 @@ ALTER TABLE actividad
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'chk_estado_actividad'
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_estado_actividad'
+          AND conrelid = 'actividad'::regclass
     ) THEN
         ALTER TABLE actividad
             ADD CONSTRAINT chk_estado_actividad
@@ -22,12 +18,7 @@ BEGIN
     END IF;
 END $$;
 
--- =============================================================
--- CASOS ESPECIALES: MULTIPLES RESULT SETS EN SQL SERVER
--- =============================================================
 
--- SQL Server devolvia 3 result sets. En PostgreSQL se devuelve una fila
--- con tres valores JSONB: opcion_actual, opciones y padre.
 CREATE OR REPLACE FUNCTION sp_Consultarchatbot(p_id_opcion integer DEFAULT NULL)
 RETURNS TABLE (
     opcion_actual jsonb,
@@ -74,8 +65,6 @@ SELECT
     ) AS padre;
 $$;
 
--- SQL Server devolvia 5 result sets. PostgreSQL devuelve una fila con
--- los totales y cuatro colecciones JSONB.
 CREATE OR REPLACE FUNCTION spConsultarDashboard()
 RETURNS TABLE (
     totalpersonas bigint,
@@ -151,20 +140,29 @@ SELECT
     ), '[]'::jsonb);
 $$;
 
--- =============================================================
--- USUARIOS / PERFIL / ROLES
--- =============================================================
 
 CREATE OR REPLACE PROCEDURE spActivarUsuario(p_id_usuario integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuario SET estado = 'A' WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spDesactivarUsuario(p_id_usuario integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuario SET estado = 'I' WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spActualizarContrasenna(
@@ -172,12 +170,18 @@ CREATE OR REPLACE PROCEDURE spActualizarContrasenna(
     p_contrasena varchar(255),
     p_indicador_temp boolean
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuario
        SET contrasena = p_contrasena,
            usa_contrasena_temp = p_indicador_temp
      WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spActualizarPerfil(
@@ -186,13 +190,19 @@ CREATE OR REPLACE PROCEDURE spActualizarPerfil(
     p_nombre varchar(100),
     p_correo varchar(100)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuario
        SET nombre = p_nombre,
            identificacion = p_identificacion,
            correo = p_correo
      WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spActualizarUsuario(
@@ -202,14 +212,20 @@ CREATE OR REPLACE PROCEDURE spActualizarUsuario(
     p_estado char(1),
     p_id_rol integer
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuario
        SET nombre = p_nombre,
            correo = p_correo,
            estado = p_estado,
            id_rol = p_id_rol
      WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spCrearUsuario(
@@ -229,9 +245,15 @@ AS $$
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarUsuario(p_id_usuario integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM usuario WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spRegistrarUsuario(
@@ -253,12 +275,20 @@ BEGIN
         RAISE EXCEPTION 'No existe el rol Usuario.';
     END IF;
 
-    IF EXISTS (SELECT 1 FROM usuario WHERE identificacion = p_identificacion) THEN
-        RETURN;
+    IF EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE identificacion = p_identificacion
+    ) THEN
+        RAISE EXCEPTION 'Ya existe un usuario con esa identificación.';
     END IF;
 
-    IF EXISTS (SELECT 1 FROM usuario WHERE correo = p_correo) THEN
-        RETURN;
+    IF EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE correo = p_correo
+    ) THEN
+        RAISE EXCEPTION 'Ya existe un usuario con ese correo.';
     END IF;
 
     INSERT INTO usuario
@@ -349,9 +379,15 @@ CREATE OR REPLACE PROCEDURE spActualizarRol(
     p_id_rol integer,
     p_descripcion varchar(20)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE rol SET descripcion = p_descripcion WHERE id_rol = p_id_rol;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el rol.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spCrearRol(p_descripcion varchar(20))
@@ -361,9 +397,15 @@ AS $$
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarRol(p_id_rol integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM rol WHERE id_rol = p_id_rol;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el rol.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarRoles()
@@ -389,12 +431,18 @@ CREATE OR REPLACE PROCEDURE spActualizarMinisterio(
     p_descripcion_ministerio varchar(100),
     p_observaciones_ministerio varchar(200)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE ministerio
        SET descripcion_ministerio = p_descripcion_ministerio,
            observaciones_ministerio = p_observaciones_ministerio
      WHERE id_ministerio = p_id_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spCrearMinisterio(
@@ -408,9 +456,15 @@ AS $$
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarMinisterio(p_id_ministerio integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM ministerio WHERE id_ministerio = p_id_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarMinisterios()
@@ -463,8 +517,9 @@ CREATE OR REPLACE PROCEDURE spActualizarUsuarioMinisterio(
     p_estado varchar(20),
     p_observacion varchar(200)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuarios_ministerio
        SET id_ministerio = p_id_ministerio,
            id_usuario = p_id_usuario,
@@ -473,6 +528,11 @@ AS $$
            estado = p_estado,
            observacion = p_observacion
      WHERE id_usuario_ministerio = p_id_usuario_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la membresía del usuario en el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spEditarUsuarioMinisterio(
@@ -480,28 +540,46 @@ CREATE OR REPLACE PROCEDURE spEditarUsuarioMinisterio(
     p_fecha_ingreso date,
     p_observacion varchar(200)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuarios_ministerio
        SET fecha_ingreso = p_fecha_ingreso,
            observacion = p_observacion
      WHERE id_usuario_ministerio = p_id_usuario_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la membresía del usuario en el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarUsuarioMinisterio(p_id_usuario_ministerio integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM usuarios_ministerio
     WHERE id_usuario_ministerio = p_id_usuario_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la membresía del usuario en el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spSalirUsuarioMinisterio(p_id_usuario_ministerio integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE usuarios_ministerio
        SET fecha_salida = CURRENT_DATE,
            estado = 'Inactivo'
      WHERE id_usuario_ministerio = p_id_usuario_ministerio;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la membresía del usuario en el ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spObtenerUsuarioMinisterio(p_id_usuario_ministerio integer)
@@ -627,11 +705,17 @@ CREATE OR REPLACE PROCEDURE spActualizarTipoActividad(
     p_id_tipo_actividad integer,
     p_nombre_tipo varchar(50)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE tipo_actividad
        SET nombre_tipo = p_nombre_tipo
      WHERE id_tipo_actividad = p_id_tipo_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el tipo de actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spCrearTipoActividad(p_nombre_tipo varchar(50))
@@ -641,9 +725,15 @@ AS $$
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarTipoActividad(p_id_tipo_actividad integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM tipo_actividad WHERE id_tipo_actividad = p_id_tipo_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el tipo de actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarTiposActividad()
@@ -701,8 +791,9 @@ CREATE OR REPLACE PROCEDURE spActualizarActividad(
     p_hora_fin time,
     p_id_tipo_actividad integer
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE actividad
        SET nombre_actividad = p_nombre_actividad,
            fecha_ini = p_fecha_ini,
@@ -712,24 +803,47 @@ AS $$
            hora_fin = p_hora_fin,
            id_tipo_actividad = p_id_tipo_actividad
      WHERE id_actividad = p_id_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarActividad(p_id_actividad integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM actividad WHERE id_actividad = p_id_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spInactivarActividad(p_id_actividad integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE actividad SET estado = 'Inactivo' WHERE id_actividad = p_id_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spActivarActividad(p_id_actividad integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE actividad SET estado = 'Activo' WHERE id_actividad = p_id_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la actividad.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarActividades()
@@ -823,14 +937,20 @@ CREATE OR REPLACE PROCEDURE spActualizarActividadesMinisterio(
     p_fecha date,
     p_observacion varchar(200)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE actividades_ministerio
        SET id_actividad = p_id_actividad,
            id_ministerio = p_id_ministerio,
            fecha = p_fecha,
            observacion = p_observacion
      WHERE id_minis_actividad = p_id_minis_actividad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la relación entre actividad y ministerio.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spEliminarActividadMinisterio(p_id_minis_actividad integer)
@@ -854,9 +974,18 @@ AS $$
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarMinisterioPorActividad(p_id_actividad integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
+    -- La actividad debe existir; tener un ministerio asociado es opcional.
+    PERFORM 1 FROM actividad WHERE id_actividad = p_id_actividad FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la actividad.';
+    END IF;
+
+    -- Cero relaciones eliminadas es válido para una actividad sin ministerio.
     DELETE FROM actividades_ministerio WHERE id_actividad = p_id_actividad;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spGuardarMinisterioActividad(
@@ -873,6 +1002,10 @@ BEGIN
                fecha = CURRENT_DATE,
                observacion = p_observacion
          WHERE id_actividad = p_id_actividad;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'No se encontró la relación entre actividad y ministerio.';
+        END IF;
     ELSE
         INSERT INTO actividades_ministerio(id_actividad, id_ministerio, fecha, observacion)
         VALUES (p_id_actividad, p_id_ministerio, CURRENT_DATE, p_observacion);
@@ -975,20 +1108,32 @@ CREATE OR REPLACE PROCEDURE spActualizarActividadUsuario(
     p_fecha date,
     p_hora time
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE actividad_usuario
        SET id_actividad = p_id_actividad,
            id_usuario = p_id_usuario,
            fecha = p_fecha,
            hora = p_hora
      WHERE id_actividad_usuario = p_id_actividad_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la relación entre actividad y usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarActividadUsuario(p_id_actividad_usuario integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM actividad_usuario WHERE id_actividad_usuario = p_id_actividad_usuario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la relación entre actividad y usuario.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarActividadUsuario(
@@ -1130,6 +1275,10 @@ BEGIN
            observacion_inicial = p_observacion_inicial,
            detalle_cita = p_detalle_cita
      WHERE id_cita = p_id_cita;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la cita.';
+    END IF;
 END;
 $$;
 
@@ -1137,17 +1286,29 @@ CREATE OR REPLACE PROCEDURE spAtenderCita(
     p_id_cita integer,
     p_detalle_cita varchar(500)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     UPDATE citas
        SET estado = 'Atendida', detalle_cita = p_detalle_cita
      WHERE id_cita = p_id_cita;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la cita.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE PROCEDURE spEliminarCita(p_id_cita integer)
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
     DELETE FROM citas WHERE id_cita = p_id_cita;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la cita.';
+    END IF;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION spListarCitas()
