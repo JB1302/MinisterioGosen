@@ -42,27 +42,30 @@ namespace MinisterioGosenAPI.Controllers
 
             try
             {
-                var parameters = new DynamicParameters();
-                parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-                parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-                parameters.Add("@Fecha_Fin", model.Fecha_Fin);
-                parameters.Add("@Lugar", model.Lugar);
-                parameters.Add("@Hora_Ini", model.Hora_Ini);
-                parameters.Add("@Hora_Fin", model.Hora_Fin);
-                parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+                await context.OpenAsync();
+                await using var transaction = await context.BeginTransactionAsync();
 
-                var idActividad = await context.QuerySingleAsync<int>(
-                                            @"SELECT spCrearActividad(
-                                            @Nombre_Actividad,
-                                            @Fecha_Ini,
-                                            @Fecha_Fin,
-                                            @Lugar,
-                                            @Hora_Ini,
-                                            @Hora_Fin,
-                                            @Id_Tipo_Actividad)", parameters);
-
-                if (idActividad > 0)
+                try
                 {
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
+                    parameters.Add("@Fecha_Ini", model.Fecha_Ini);
+                    parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                    parameters.Add("@Lugar", model.Lugar);
+                    parameters.Add("@Hora_Ini", model.Hora_Ini);
+                    parameters.Add("@Hora_Fin", model.Hora_Fin);
+                    parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+
+                    var idActividad = await context.QuerySingleAsync<int>(
+                                                @"SELECT spCrearActividad(
+                                                @Nombre_Actividad,
+                                                @Fecha_Ini,
+                                                @Fecha_Fin,
+                                                @Lugar,
+                                                @Hora_Ini,
+                                                @Hora_Fin,
+                                                @Id_Tipo_Actividad)", parameters);
+
                     if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
                     {
                         var parametersMinisterio = new DynamicParameters();
@@ -76,10 +79,14 @@ namespace MinisterioGosenAPI.Controllers
                                                    @Observacion)", parametersMinisterio);
                     }
 
+                    await transaction.CommitAsync();
                     return Ok(idActividad);
                 }
-
-                return BadRequest("No se ha registrado la actividad");
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (PostgresException ex)
             {
@@ -102,28 +109,31 @@ namespace MinisterioGosenAPI.Controllers
 
             try
             {
-                var parameters = new DynamicParameters();
-                parameters.Add("@Id_Actividad", model.Id_Actividad);
-                parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-                parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-                parameters.Add("@Fecha_Fin", model.Fecha_Fin);
-                parameters.Add("@Lugar", model.Lugar);
-                parameters.Add("@Hora_Ini", model.Hora_Ini);
-                parameters.Add("@Hora_Fin", model.Hora_Fin);
-                parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+                await context.OpenAsync();
+                await using var transaction = await context.BeginTransactionAsync();
 
-                var response = await context.ExecuteAsync(@"CALL spActualizarActividad(
-                                            @Id_Actividad,
-                                            @Nombre_Actividad,
-                                            @Fecha_Ini,
-                                            @Fecha_Fin,
-                                            @Lugar,
-                                            @Hora_Ini,
-                                            @Hora_Fin,
-                                            @Id_Tipo_Actividad)", parameters);
-
-                if (response > 0)
+                try
                 {
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@Id_Actividad", model.Id_Actividad);
+                    parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
+                    parameters.Add("@Fecha_Ini", model.Fecha_Ini);
+                    parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                    parameters.Add("@Lugar", model.Lugar);
+                    parameters.Add("@Hora_Ini", model.Hora_Ini);
+                    parameters.Add("@Hora_Fin", model.Hora_Fin);
+                    parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+
+                    await context.ExecuteAsync(@"CALL spActualizarActividad(
+                                                @Id_Actividad,
+                                                @Nombre_Actividad,
+                                                @Fecha_Ini,
+                                                @Fecha_Fin,
+                                                @Lugar,
+                                                @Hora_Ini,
+                                                @Hora_Fin,
+                                                @Id_Tipo_Actividad)", parameters);
+
                     if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
                     {
                         var parametersMinisterio = new DynamicParameters();
@@ -132,9 +142,9 @@ namespace MinisterioGosenAPI.Controllers
                         parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
 
                         await context.ExecuteAsync(@"CALL spGuardarMinisterioActividad(
-                                            @Id_Actividad,
-                                            @Id_Ministerio,
-                                            @Observacion)", parametersMinisterio);
+                                                @Id_Actividad,
+                                                @Id_Ministerio,
+                                                @Observacion)", parametersMinisterio);
                     }
                     else
                     {
@@ -144,10 +154,14 @@ namespace MinisterioGosenAPI.Controllers
                         await context.ExecuteAsync("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersEliminarMinisterio);
                     }
 
-                    return Ok(response);
+                    await transaction.CommitAsync();
+                    return Ok("Actividad actualizada correctamente");
                 }
-
-                return BadRequest("No se ha actualizado la actividad");
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (PostgresException ex)
             {
@@ -178,12 +192,9 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Actividad", id);
 
-                var response = await context.ExecuteAsync("CALL spEliminarActividad(@Id_Actividad)", parameters);
+                await context.ExecuteAsync("CALL spEliminarActividad(@Id_Actividad)", parameters);
 
-                if (response > 0)
-                    return Ok(response);
-
-                return BadRequest("No se ha eliminado la actividad");
+                return Ok("Actividad eliminada correctamente");
             }
             catch (PostgresException ex)
             {
@@ -209,12 +220,9 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Actividad", id);
 
-                var response = await context.ExecuteAsync("CALL spInactivarActividad(@Id_Actividad)", parameters);
+                await context.ExecuteAsync("CALL spInactivarActividad(@Id_Actividad)", parameters);
 
-                if (response > 0)
-                    return Ok(response);
-
-                return BadRequest("No se pudo inactivar la actividad.");
+                return Ok("Actividad inactivada correctamente");
             }
             catch (PostgresException ex)
             {
@@ -240,12 +248,9 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Actividad", id);
 
-                var response = await context.ExecuteAsync("CALL spActivarActividad(@Id_Actividad)", parameters);
+                await context.ExecuteAsync("CALL spActivarActividad(@Id_Actividad)", parameters);
 
-                if (response > 0)
-                    return Ok(response);
-
-                return BadRequest("No se pudo activar la actividad.");
+                return Ok("Actividad activada correctamente");
             }
             catch (PostgresException ex)
             {

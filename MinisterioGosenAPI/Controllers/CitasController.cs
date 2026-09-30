@@ -100,7 +100,7 @@ namespace MinisterioGosenAPI.Controllers
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                             @"CALL spActualizarCita(
                                                 @Id_Cita,
                                                 @Fecha_Cita,
@@ -110,20 +110,14 @@ namespace MinisterioGosenAPI.Controllers
                                                 @Observacion_Inicial,
                                                 @Detalle_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha actualizado la cita.");
+                return Ok("Cita actualizada correctamente");
             }
             catch (PostgresException ex)
             {
-                // Error generado por PostgreSQL:
-                // constraint, RAISE EXCEPTION, FK, etc.
                 return BadRequest(ex.MessageText);
             }
             catch (NpgsqlException ex)
             {
-                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
@@ -143,25 +137,19 @@ namespace MinisterioGosenAPI.Controllers
                 parameters.Add("@Id_Cita", model.Id_Cita);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                         @"CALL spAtenderCita(
                                             @Id_Cita,
-                                            @Detalle_Cita)",parameters);
+                                            @Detalle_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha podido marcar la cita como atendida.");
+                return Ok("Cita marcada como atendida correctamente");
             }
             catch (PostgresException ex)
             {
-                // Error generado por PostgreSQL:
-                // constraint, RAISE EXCEPTION, FK, etc.
                 return BadRequest(ex.MessageText);
             }
             catch (NpgsqlException ex)
             {
-                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
@@ -180,13 +168,10 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", id);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                         "CALL spEliminarCita(@Id_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha eliminado la cita.");
+                return Ok("Cita eliminada correctamente");
             }
             catch (PostgresException ex)
             {

@@ -41,15 +41,6 @@ namespace MinisterioGosenAPI.Controllers
                     parameters
                 );
 
-                if (row == null)
-                {
-                    if (idOpcion.HasValue)
-                        return NotFound("No se encontró la opción seleccionada");
-
-                    // Si no hay parámetro, retornar estructura vacía
-                    return Ok(new ChatbotResultadoModel());
-                }
-
                 var jsonOptions = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -72,17 +63,19 @@ namespace MinisterioGosenAPI.Controllers
                             row.Padre, jsonOptions)
                 };
 
+                if (idOpcion.HasValue && response.Seleccion == null)
+                {
+                    return NotFound("No se encontró la opción seleccionada");
+                }
+
                 return Ok(response);
             }
             catch (PostgresException ex)
             {
-                // Error generado por PostgreSQL:
-                // constraint, RAISE EXCEPTION, FK, etc.
                 return BadRequest(ex.MessageText);
             }
             catch (NpgsqlException ex)
             {
-                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)

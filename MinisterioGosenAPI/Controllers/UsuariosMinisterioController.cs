@@ -66,65 +66,101 @@ namespace MinisterioGosenAPI.Controllers
         }
 
         [HttpPost("CrearUsuarioMinisterioAPI")]
-        public IActionResult CrearUsuarioMinisterioAPI(UsuariosMinisterioModel model)
+        public async Task<IActionResult> CrearUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-            parameters.Add("@Id_Usuario", model.Id_Usuario);
-            parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
-            parameters.Add("@Estado", model.Estado);
-            parameters.Add("@Observacion", model.Observacion);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Ministerio", model.Id_Ministerio);
+                parameters.Add("@Id_Usuario", model.Id_Usuario);
+                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
+                parameters.Add("@Estado", model.Estado);
+                parameters.Add("@Observacion", model.Observacion);
 
-            var response = context.Execute(@"CALL spCrearUsuarioMinisterio(
+                await context.ExecuteAsync(@"CALL spCrearUsuarioMinisterio(
                                                             @Id_Ministerio,
                                                             @Id_Usuario,
                                                             @Fecha_Ingreso,
                                                             @Estado,
                                                             @Observacion)", parameters);
 
-            if (response > 0)
-                return Ok(response);
-
-            return BadRequest("No se pudo registrar el usuario al ministerio.");
+                return Ok("Usuario asignado al ministerio correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPut("ActualizarUsuarioMinisterioAPI")]
-        public IActionResult ActualizarUsuarioMinisterioAPI(UsuariosMinisterioModel model)
+        public async Task<IActionResult> ActualizarUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
-            parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
-            parameters.Add("@Observacion", model.Observacion);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
+                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
+                parameters.Add("@Observacion", model.Observacion);
 
-            var response = context.Execute(@"CALL spEditarUsuarioMinisterio(
+                await context.ExecuteAsync(@"CALL spEditarUsuarioMinisterio(
                                                             @Id_Usuario_Ministerio,
                                                             @Fecha_Ingreso,
                                                             @Observacion)", parameters);
 
-            if (response > 0)
-                return Ok(response);
-
-            return BadRequest("No se pudo actualizar el registro.");
+                return Ok("Registro actualizado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPut("SalirUsuarioMinisterioAPI")]
-        public IActionResult SalirUsuarioMinisterioAPI(UsuariosMinisterioModel model)
+        public async Task<IActionResult> SalirUsuarioMinisterioAPI(UsuariosMinisterioModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
 
-            var response = context.Execute("CALL spSalirUsuarioMinisterio(@Id_Usuario_Ministerio)", parameters);
+                await context.ExecuteAsync("CALL spSalirUsuarioMinisterio(@Id_Usuario_Ministerio)", parameters);
 
-            if (response > 0)
-                return Ok(response);
-
-            return BadRequest("No se pudo sacar el usuario del ministerio.");
+                return Ok("Usuario sacado del ministerio correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPost("ReportePersonasMinisterioAPI")]

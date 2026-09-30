@@ -14,33 +14,45 @@ namespace MinisterioGosenAPI.Controllers
         public async Task<IActionResult> RegistrarAPI(
             RegistroUsuarioRequestModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                model.Contrasena = BCrypt.Net.BCrypt.HashPassword(model.Contrasena);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Nombre", model.Nombre);
-            parameters.Add("@Identificacion", model.Identificacion);
-            parameters.Add("@Correo", model.Correo);
-            parameters.Add("@Contrasena", model.Contrasena);
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Execute(@"CALL spRegistrarUsuario(
+                var parameters = new DynamicParameters();
+                parameters.Add("@Nombre", model.Nombre);
+                parameters.Add("@Identificacion", model.Identificacion);
+                parameters.Add("@Correo", model.Correo);
+                parameters.Add("@Contrasena", model.Contrasena);
+
+                await context.ExecuteAsync(@"CALL spRegistrarUsuario(
                                                                 @Identificacion,
                                                                 @Nombre,
                                                                 @Correo,
                                                                 @Contrasena)", parameters);
 
-            if (response > 0)
-            {
                 // Enviar correo de confirmación de registro
-                string ruta = Path.Combine(AppContext.BaseDirectory,"Templates","RegistroUsuario.html");             
+                string ruta = Path.Combine(AppContext.BaseDirectory, "Templates", "RegistroUsuario.html");
                 string plantilla = System.IO.File.ReadAllText(ruta);
 
-                plantilla = plantilla.Replace("{{NOMBRE}}",model.Nombre);
+                plantilla = plantilla.Replace("{{NOMBRE}}", model.Nombre);
 
-                await _utiles.EnviarCorreoAsync( model.Correo,"Cuenta creada exitosamente",plantilla);
-                return Ok(response);
+                await _utiles.EnviarCorreoAsync(model.Correo, "Cuenta creada exitosamente", plantilla);
+                return Ok("Usuario registrado correctamente");
             }
-
-            return BadRequest("No se ha registrado su información, " + "valide que no tenga una cuenta ya creada");
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, "No se ha registrado su información, valide que no tenga una cuenta ya creada");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPost("IniciarSesionAPI")]
@@ -64,32 +76,32 @@ namespace MinisterioGosenAPI.Controllers
         [HttpPost("RecuperarAccesoAPI")]
         public async Task<IActionResult> RecuperarAccesoAPI(RecuperarAccesoRequestModel model)
         {
-            //1. Validar que el correo exista en la base de datos
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-
-            var parameters = new DynamicParameters();
-            parameters.Add("@Correo", model.Correo);
-            var response = context.QueryFirstOrDefault<UsuarioResponseModel>("SELECT * FROM spValidarCorreo(@Correo)", parameters);
-
-            if (response == null)
-                return NotFound("No se ha validado su información correctamente");
-
-            //2 Generar una contraseña temporal
-            var temporal = _utiles.GenerarContrasena();
-            var temporalCifrada = BCrypt.Net.BCrypt.HashPassword(temporal);
-
-            parameters = new DynamicParameters();
-            parameters.Add("@Id_Usuario", response.Id_Usuario);
-            parameters.Add("@Contrasena", temporalCifrada);
-            parameters.Add("@IndicadorTemp", true);
-            var update = context.Execute(
-                                @"CALL spActualizarContrasenna(
-                                    @Id_Usuario,
-                                    @Contrasena,
-                                    @IndicadorTemp)",parameters);
-
-            if (update > 0)
+            try
             {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@Correo", model.Correo);
+                var response = await context.QueryFirstOrDefaultAsync<UsuarioResponseModel>("SELECT * FROM spValidarCorreo(@Correo)", parameters);
+
+                if (response == null)
+                    return NotFound("No se ha validado su información correctamente");
+
+                //2 Generar una contraseña temporal
+                var temporal = _utiles.GenerarContrasena();
+                var temporalCifrada = BCrypt.Net.BCrypt.HashPassword(temporal);
+
+                parameters = new DynamicParameters();
+                parameters.Add("@Id_Usuario", response.Id_Usuario);
+                parameters.Add("@Contrasena", temporalCifrada);
+                parameters.Add("@IndicadorTemp", true);
+
+                await context.ExecuteAsync(
+                                    @"CALL spActualizarContrasenna(
+                                        @Id_Usuario,
+                                        @Contrasena,
+                                        @IndicadorTemp)", parameters);
+
                 //3. Enviar la contraseña temporal al correo electrónico del usuario
                 string ruta = Path.Combine(AppContext.BaseDirectory, "Templates", "RecuperarAcceso.html");
                 string plantilla = System.IO.File.ReadAllText(ruta);
@@ -98,10 +110,20 @@ namespace MinisterioGosenAPI.Controllers
                 plantilla = plantilla.Replace("{{NOMBRE}}", response.Nombre);
 
                 await _utiles.EnviarCorreoAsync(model.Correo, "Recuperación de acceso", plantilla);
-                return Ok(response);
+                return Ok("Acceso recuperado, revise su correo");
             }
-
-            return BadRequest("No se ha recuperado su acceso, intente nuevamente más tarde");
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
     }
 }

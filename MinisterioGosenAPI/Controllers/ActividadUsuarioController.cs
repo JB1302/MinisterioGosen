@@ -91,53 +91,78 @@ namespace MinisterioGosenAPI.Controllers
 		}
 
 		[HttpPut("ActualizarActividadUsuarioAPI")]
-		public IActionResult ActualizarActividadUsuarioAPI([FromBody] ActividadUsuarioModel model)
+		public async Task<IActionResult> ActualizarActividadUsuarioAPI([FromBody] ActividadUsuarioModel model)
 		{
-			if (!ModelState.IsValid)
-				return BadRequest(ModelState);
-
-			if (model.Id_Actividad_Usuario <= 0)
-				return BadRequest(new { Success = false, Message = "El identificador de la participación es obligatorio" });
-
-			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-			var parameters = new DynamicParameters();
-			parameters.Add("@Id_Actividad_Usuario", model.Id_Actividad_Usuario);
-			parameters.Add("@Id_Actividad", model.Id_Actividad);
-			parameters.Add("@Id_Usuario", model.Id_Usuario);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Hora", model.Hora);
-
-			var response = context.Execute(
-					@"CALL spActualizarActividadUsuario(
-						@Id_Actividad_Usuario,
-						@Id_Actividad,
-						@Id_Usuario,
-						@Fecha,
-						@Hora
-					)",parameters);
-
-			return Ok(new
+			try
 			{
-				Success = true,
-				Message = "Participación actualizada correctamente"
-			});
+				if (!ModelState.IsValid)
+					return BadRequest(ModelState);
 
-            //return BadRequest(new { Success = false, Message = "No se ha actualizado la participación" });
-        }
+				if (model.Id_Actividad_Usuario <= 0)
+					return BadRequest(new { Success = false, Message = "El identificador de la participación es obligatorio" });
+
+				await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+				var parameters = new DynamicParameters();
+				parameters.Add("@Id_Actividad_Usuario", model.Id_Actividad_Usuario);
+				parameters.Add("@Id_Actividad", model.Id_Actividad);
+				parameters.Add("@Id_Usuario", model.Id_Usuario);
+				parameters.Add("@Fecha", model.Fecha);
+				parameters.Add("@Hora", model.Hora);
+
+				await context.ExecuteAsync(
+						@"CALL spActualizarActividadUsuario(
+							@Id_Actividad_Usuario,
+							@Id_Actividad,
+							@Id_Usuario,
+							@Fecha,
+							@Hora
+						)", parameters);
+
+				return Ok(new
+				{
+					Success = true,
+					Message = "Participación actualizada correctamente"
+				});
+			}
+			catch (PostgresException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.MessageText });
+			}
+			catch (NpgsqlException ex)
+			{
+				return StatusCode(500, new { Success = false, Message = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "Error interno" });
+			}
+		}
 
 		[HttpDelete("EliminarActividadUsuarioAPI")]
-		public IActionResult EliminarActividadUsuarioAPI(int id)
+		public async Task<IActionResult> EliminarActividadUsuarioAPI(int id)
 		{
-			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-			var parameters = new DynamicParameters();
-			parameters.Add("@Id_Actividad_Usuario", id);
+			try
+			{
+				await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+				var parameters = new DynamicParameters();
+				parameters.Add("@Id_Actividad_Usuario", id);
 
-			var response = context.Execute("CALL spEliminarActividadUsuario(@Id_Actividad_Usuario)", parameters);
+				await context.ExecuteAsync("CALL spEliminarActividadUsuario(@Id_Actividad_Usuario)", parameters);
 
-			if (response > 0)
 				return Ok(new { Success = true, Message = "Participación eliminada correctamente" });
-
-			return BadRequest(new { Success = false, Message = "No se ha eliminado la participación" });
+			}
+			catch (PostgresException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.MessageText });
+			}
+			catch (NpgsqlException ex)
+			{
+				return StatusCode(500, new { Success = false, Message = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "No se ha eliminado la participación" });
+			}
 		}
 	}
 }
