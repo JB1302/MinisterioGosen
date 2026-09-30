@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using Npgsql;
 
@@ -37,62 +36,87 @@ namespace MinisterioGosenAPI.Controllers
         }
 
         [HttpPost("CrearMinisterioAPI")]
-        public IActionResult CrearMinisterioAPI(MinisterioModel model)
+        public async Task<IActionResult> CrearMinisterioAPI(MinisterioModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
-            parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
+                parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
 
-            var response = context.Execute(@"CALL spCrearMinisterio(@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
+                await context.ExecuteAsync(@"CALL spCrearMinisterio(@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
 
-            return Ok(1);
-            //if (response > 0)
-            //    return Ok(response);
-
-            //return BadRequest("No se ha registrado el ministerio");
+                return Ok("Ministerio creado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPut("ActualizarMinisterioAPI")]
-        public IActionResult ActualizarMinisterioAPI(MinisterioModel model)
+        public async Task<IActionResult> ActualizarMinisterioAPI(MinisterioModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-            parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
-            parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Ministerio", model.Id_Ministerio);
+                parameters.Add("@Descripcion_Ministerio", model.Descripcion_Ministerio);
+                parameters.Add("@Observaciones_Ministerio", model.Observaciones_Ministerio);
 
-            var response = context.Execute(@"CALL spActualizarMinisterio(@Id_Ministerio,@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
+                await context.ExecuteAsync(@"CALL spActualizarMinisterio(@Id_Ministerio,@Descripcion_Ministerio,@Observaciones_Ministerio)", parameters);
 
-            return Ok(1);
-            //if (response > 0)
-            //    return Ok(response);
-
-            //return BadRequest("No se ha actualizado el ministerio");
+                return Ok("Ministerio actualizado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpDelete("EliminarMinisterioAPI")]
-        public IActionResult EliminarMinisterioAPI(int id)
+        public async Task<IActionResult> EliminarMinisterioAPI(int id)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Ministerio", id);
-
             try
             {
-                var response = context.Execute("CALL spEliminarMinisterio(@Id_Ministerio)",parameters);
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-                //return Ok(1);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Ministerio", id);
 
-                if (response > 0)
-                    return Ok(response);
+                await context.ExecuteAsync("CALL spEliminarMinisterio(@Id_Ministerio)", parameters);
 
-                return BadRequest("No se ha eliminado el ministerio");
+                return Ok("Ministerio eliminado correctamente");
             }
-            catch
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest("No se puede eliminar este ministerio porque tiene información relacionada.");
+            }
+            catch (Exception ex)
             {
                 return BadRequest("No se puede eliminar este ministerio porque tiene información relacionada.");
             }

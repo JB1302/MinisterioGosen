@@ -1,4 +1,9 @@
 using MinisterioGosenAPI.Services;
+using Dapper;
+using MinisterioGosenAPI.Infrastructure;
+
+SqlMapper.AddTypeHandler(new PostgreSqlDateTimeHandler());
+SqlMapper.AddTypeHandler(new PostgreSqlTimeSpanHandler());
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,3 +31,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+

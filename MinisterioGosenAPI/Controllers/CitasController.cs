@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using Npgsql;
 using System.Data;
@@ -46,8 +45,14 @@ namespace MinisterioGosenAPI.Controllers
                 using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@Fecha_Cita", model.Fecha_Cita);
-                parameters.Add("@Hora_Cita", model.Hora_Cita);
+                parameters.Add(
+                    "@Fecha_Cita",
+                    model.Fecha_Cita,
+                    DbType.Date);
+                parameters.Add(
+                    "@Hora_Cita",
+                    model.Hora_Cita,
+                    DbType.Time);
                 parameters.Add("@Id_Usuario_Cita", model.Id_Usuario_Cita);
                 parameters.Add("@Id_Usuario_Encargado", model.Id_Usuario_Encargado);
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
@@ -69,9 +74,15 @@ namespace MinisterioGosenAPI.Controllers
 
                 return BadRequest("No se ha registrado la cita.");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
-                // Captura los RAISERROR lanzados desde el Stored Procedure
+                // Error generado por PostgreSQL:
+                // constraint, RAISE EXCEPTION, FK, etc.
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
@@ -89,14 +100,20 @@ namespace MinisterioGosenAPI.Controllers
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", model.Id_Cita);
-                parameters.Add("@Fecha_Cita", model.Fecha_Cita);
-                parameters.Add("@Hora_Cita", model.Hora_Cita);
+                parameters.Add(
+                    "@Fecha_Cita",
+                    model.Fecha_Cita,
+                    DbType.Date);
+                parameters.Add(
+                "@Hora_Cita",
+                model.Hora_Cita,
+                DbType.Time);
                 parameters.Add("@Id_Usuario_Cita", model.Id_Usuario_Cita);
                 parameters.Add("@Id_Usuario_Encargado", model.Id_Usuario_Encargado);
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                             @"CALL spActualizarCita(
                                                 @Id_Cita,
                                                 @Fecha_Cita,
@@ -106,12 +123,13 @@ namespace MinisterioGosenAPI.Controllers
                                                 @Observacion_Inicial,
                                                 @Detalle_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha actualizado la cita.");
+                return Ok("Cita actualizada correctamente");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -132,17 +150,18 @@ namespace MinisterioGosenAPI.Controllers
                 parameters.Add("@Id_Cita", model.Id_Cita);
                 parameters.Add("@Detalle_Cita", model.Detalle_Cita);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                         @"CALL spAtenderCita(
                                             @Id_Cita,
-                                            @Detalle_Cita)",parameters);
+                                            @Detalle_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha podido marcar la cita como atendida.");
+                return Ok("Cita marcada como atendida correctamente");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -162,13 +181,10 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", id);
 
-                var rowsAffected = await context.ExecuteAsync(
+                await context.ExecuteAsync(
                                         "CALL spEliminarCita(@Id_Cita)", parameters);
 
-                if (rowsAffected > 0)
-                    return Ok(rowsAffected);
-
-                return BadRequest("No se ha eliminado la cita.");
+                return Ok("Cita eliminada correctamente");
             }
             catch (PostgresException ex)
             {
