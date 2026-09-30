@@ -4,11 +4,10 @@ using System.Net;
 
 namespace MinisterioGosen.Controllers
 {
-    public class HomeController (
-        IHttpClientFactory _http, 
+    public class HomeController(
+        IHttpClientFactory _http,
         IConfiguration _config) : Controller
     {
-
         #region Iniciar Sesión
 
         [HttpGet]
@@ -39,7 +38,6 @@ namespace MinisterioGosen.Controllers
         [HttpPost]
         public IActionResult Index(UsuarioModel model)
         {
-
             using var client = _http.CreateClient();
 
             var url = _config["Valores:UrlApi"] + "Home/IniciarSesionAPI";
@@ -51,15 +49,17 @@ namespace MinisterioGosen.Controllers
 
                 HttpContext.Session.SetString("Autenticado", "1");
                 HttpContext.Session.SetString("Nombre", datos!.Nombre);
-                HttpContext.Session.SetInt32("Id_Usuario", datos!.Id_Usuario);
-                HttpContext.Session.SetInt32("Id_Rol", datos!.Id_Rol);
+                HttpContext.Session.SetInt32("Id_Usuario", datos.Id_Usuario);
+                HttpContext.Session.SetInt32("Id_Rol", datos.Id_Rol);
 
-                if (datos!.UsaContrasenaTemp)
+                if (datos.UsaContrasenaTemp)
+                {
                     return RedirectToAction("Configuracion", "Usuario");
+                }
 
                 return RedirectToAction("Principal", "Home");
-
-            }else if (response.StatusCode == HttpStatusCode.NotFound)
+            }
+            else if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 ViewBag.Mensaje = response.Content.ReadAsStringAsync().Result;
                 return View();
@@ -81,8 +81,6 @@ namespace MinisterioGosen.Controllers
         [HttpPost]
         public IActionResult Registrar(UsuarioModel model)
         {
-            model.Contrasena = BCrypt.Net.BCrypt.HashPassword(model.Contrasena);
-
             using var client = _http.CreateClient();
 
             var url = _config["Valores:UrlApi"] + "Home/RegistrarAPI";
@@ -91,7 +89,6 @@ namespace MinisterioGosen.Controllers
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 return RedirectToAction("Index", "Home");
-
             }
             else if (response.StatusCode == HttpStatusCode.BadRequest)
             {
@@ -99,7 +96,11 @@ namespace MinisterioGosen.Controllers
                 return View();
             }
 
-            throw new Exception("Error al registrar usuario");
+            var detalle = response.Content.ReadAsStringAsync().Result;
+
+            throw new Exception(
+                $"Error al registrar usuario. HTTP {(int)response.StatusCode}: {detalle}"
+            );
         }
 
         #endregion
@@ -123,10 +124,10 @@ namespace MinisterioGosen.Controllers
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 return RedirectToAction("Index", "Home");
-
             }
-            else if (response.StatusCode == HttpStatusCode.BadRequest 
-                    || response.StatusCode == HttpStatusCode.NotFound)
+            else if (
+                response.StatusCode == HttpStatusCode.BadRequest ||
+                response.StatusCode == HttpStatusCode.NotFound)
             {
                 ViewBag.Mensaje = response.Content.ReadAsStringAsync().Result;
                 return View();
@@ -148,6 +149,8 @@ namespace MinisterioGosen.Controllers
 
         #endregion
 
+        #region Principal
+
         [HttpGet]
         public IActionResult Principal()
         {
@@ -158,7 +161,8 @@ namespace MinisterioGosen.Controllers
 
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                var actividades = response.Content.ReadFromJsonAsync<List<ActividadModel>>().Result
+                var actividades =
+                    response.Content.ReadFromJsonAsync<List<ActividadModel>>().Result
                     ?? new List<ActividadModel>();
 
                 var ministeriosRecientes = actividades
@@ -172,5 +176,7 @@ namespace MinisterioGosen.Controllers
 
             return View(new List<ActividadModel>());
         }
+
+        #endregion
     }
 }
