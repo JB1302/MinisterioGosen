@@ -68,8 +68,8 @@ namespace MinisterioGosenAPI.Controllers
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad", model.Id_Actividad);
 			parameters.Add("@Id_Usuario", model.Id_Usuario);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Hora", model.Hora);
+            parameters.Add("@Fecha", model.Fecha, DbType.Date);
+            parameters.Add("@Hora", model.Hora, DbType.Time);
 
             var idActividadUsuario = context.QuerySingle<int>(
 						@"SELECT spCrearActividadUsuario(
@@ -107,10 +107,10 @@ namespace MinisterioGosenAPI.Controllers
 				parameters.Add("@Id_Actividad_Usuario", model.Id_Actividad_Usuario);
 				parameters.Add("@Id_Actividad", model.Id_Actividad);
 				parameters.Add("@Id_Usuario", model.Id_Usuario);
-				parameters.Add("@Fecha", model.Fecha);
-				parameters.Add("@Hora", model.Hora);
+                parameters.Add("@Fecha", model.Fecha, DbType.Date);
+                parameters.Add("@Hora", model.Hora, DbType.Time);
 
-				await context.ExecuteAsync(
+                await context.ExecuteAsync(
 						@"CALL spActualizarActividadUsuario(
 							@Id_Actividad_Usuario,
 							@Id_Actividad,

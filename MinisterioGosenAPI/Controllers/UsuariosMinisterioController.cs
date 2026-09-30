@@ -76,7 +76,7 @@ namespace MinisterioGosenAPI.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Ministerio", model.Id_Ministerio);
                 parameters.Add("@Id_Usuario", model.Id_Usuario);
-                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
+                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso, DbType.Date);
                 parameters.Add("@Estado", model.Estado);
                 parameters.Add("@Observacion", model.Observacion);
 
@@ -112,7 +112,7 @@ namespace MinisterioGosenAPI.Controllers
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Usuario_Ministerio", model.Id_Usuario_Ministerio);
-                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso);
+                parameters.Add("@Fecha_Ingreso", model.Fecha_Ingreso, DbType.Date);
                 parameters.Add("@Observacion", model.Observacion);
 
                 await context.ExecuteAsync(@"CALL spEditarUsuarioMinisterio(

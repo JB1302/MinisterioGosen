@@ -66,8 +66,8 @@ namespace MinisterioGosenAPI.Controllers
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad", model.Id_Actividad);
 			parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Observacion", model.Observacion);
+            parameters.Add("@Fecha", model.Fecha, DbType.Date);
+            parameters.Add("@Observacion", model.Observacion);
 
             var idActividadMinisterio =
                 context.QuerySingle<int>(
@@ -107,8 +107,8 @@ namespace MinisterioGosenAPI.Controllers
 				parameters.Add("@Id_Minis_Actividad", model.Id_Minis_Actividad);
 				parameters.Add("@Id_Actividad", model.Id_Actividad);
 				parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-				parameters.Add("@Fecha", model.Fecha);
-				parameters.Add("@Observacion", model.Observacion);
+                parameters.Add("@Fecha", model.Fecha, DbType.Date);
+                parameters.Add("@Observacion", model.Observacion);
 
 				await context.ExecuteAsync(
 					@"CALL spActualizarActividadesMinisterio(
