@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System.Linq.Expressions;
+using System.Data;
 
 namespace MinisterioGosen.Controllers
 {
@@ -23,7 +24,7 @@ namespace MinisterioGosen.Controllers
                 var parameters = new DynamicParameters();
                 parameters.Add("@Mensaje", ex?.Error.Message);
                 parameters.Add("@Lugar", ex?.Path);
-                parameters.Add("@FechaHora", DateTime.Now);
+                parameters.Add("@FechaHora", DateTime.Now, DbType.DateTime2);
                 parameters.Add("@Id_Usuario", 0);
 
                 await context.ExecuteAsync(

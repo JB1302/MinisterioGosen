@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
 using Npgsql;
+using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -49,11 +50,25 @@ namespace MinisterioGosenAPI.Controllers
                 {
                     var parameters = new DynamicParameters();
                     parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-                    parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-                    parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                    parameters.Add(
+                        "@Fecha_Ini",
+                        model.Fecha_Ini,
+                        DbType.Date);
+
+                    parameters.Add(
+                        "@Fecha_Fin",
+                        model.Fecha_Fin,
+                        DbType.Date);
                     parameters.Add("@Lugar", model.Lugar);
-                    parameters.Add("@Hora_Ini", model.Hora_Ini);
-                    parameters.Add("@Hora_Fin", model.Hora_Fin);
+                    parameters.Add(
+                        "@Hora_Ini",
+                        model.Hora_Ini?.TimeOfDay,
+                        DbType.Time);
+
+                    parameters.Add(
+                        "@Hora_Fin",
+                        model.Hora_Fin?.TimeOfDay,
+                        DbType.Time);
                     parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
                     var idActividad = await context.QuerySingleAsync<int>(
@@ -117,11 +132,25 @@ namespace MinisterioGosenAPI.Controllers
                     var parameters = new DynamicParameters();
                     parameters.Add("@Id_Actividad", model.Id_Actividad);
                     parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-                    parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-                    parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                    parameters.Add(
+                        "@Fecha_Ini",
+                        model.Fecha_Ini,
+                        DbType.Date);
+
+                    parameters.Add(
+                        "@Fecha_Fin",
+                        model.Fecha_Fin,
+                        DbType.Date);
                     parameters.Add("@Lugar", model.Lugar);
-                    parameters.Add("@Hora_Ini", model.Hora_Ini);
-                    parameters.Add("@Hora_Fin", model.Hora_Fin);
+                    parameters.Add(
+                        "@Hora_Ini",
+                        model.Hora_Ini?.TimeOfDay,
+                        DbType.Time);
+
+                    parameters.Add(
+                        "@Hora_Fin",
+                        model.Hora_Fin?.TimeOfDay,
+                        DbType.Time);
                     parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
                     await context.ExecuteAsync(@"CALL spActualizarActividad(
@@ -298,8 +327,15 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Buscar", filtros.Buscar);
             parameters.Add("@Id_Ministerio", filtros.IdMinisterio);
             parameters.Add("@Id_Tipo_Actividad", filtros.IdTipoActividad);
-            parameters.Add("@FechaInicio", filtros.FechaInicio);
-            parameters.Add("@FechaFin", filtros.FechaFin);
+            parameters.Add(
+    "@FechaInicio",
+    filtros.FechaInicio,
+    DbType.Date);
+
+            parameters.Add(
+    "@FechaFin",
+    filtros.FechaFin,
+    DbType.Date);
 
             var response = context.Query<ActividadModel>(
                 @"SELECT * FROM spReporteActividades(
@@ -324,8 +360,14 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Buscar", filtros.Buscar);
             parameters.Add("@Id_Ministerio", filtros.IdMinisterio);
             parameters.Add("@Id_Tipo_Actividad", filtros.IdTipoActividad);
-            parameters.Add("@FechaInicio", filtros.FechaInicio);
-            parameters.Add("@FechaFin", filtros.FechaFin);
+            parameters.Add(
+    "@FechaInicio",
+    filtros.FechaInicio,
+    DbType.Date);
+            parameters.Add(
+    "@FechaFin",
+    filtros.FechaFin,
+    DbType.Date);
 
             var response = context.Query<ActividadModel>(
                 @"SELECT * FROM spReporteHorarios(

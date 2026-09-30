@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
 using Npgsql;
+using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -172,8 +173,15 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Buscar", filtros.Buscar);
             parameters.Add("@Id_Ministerio", filtros.IdMinisterio);
             parameters.Add("@Estado", filtros.Estado);
-            parameters.Add("@FechaInicio", filtros.FechaInicio);
-            parameters.Add("@FechaFin", filtros.FechaFin);
+            parameters.Add(
+                "@FechaInicio",
+                filtros.FechaInicio,
+                DbType.Date);
+
+            parameters.Add(
+                "@FechaFin",
+                filtros.FechaFin,
+                DbType.Date);
 
             var response = context.Query<UsuariosMinisterioModel>(@"SELECT * FROM spReportePersonasMinisterio(
                                                                                                 @Buscar,

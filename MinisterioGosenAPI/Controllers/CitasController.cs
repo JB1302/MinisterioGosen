@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
 using Npgsql;
+using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -44,8 +45,14 @@ namespace MinisterioGosenAPI.Controllers
                 using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@Fecha_Cita", model.Fecha_Cita);
-                parameters.Add("@Hora_Cita", model.Hora_Cita);
+                parameters.Add(
+                    "@Fecha_Cita",
+                    model.Fecha_Cita,
+                    DbType.Date);
+                parameters.Add(
+                    "@Hora_Cita",
+                    model.Hora_Cita,
+                    DbType.Time);
                 parameters.Add("@Id_Usuario_Cita", model.Id_Usuario_Cita);
                 parameters.Add("@Id_Usuario_Encargado", model.Id_Usuario_Encargado);
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
@@ -93,8 +100,14 @@ namespace MinisterioGosenAPI.Controllers
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Cita", model.Id_Cita);
-                parameters.Add("@Fecha_Cita", model.Fecha_Cita);
-                parameters.Add("@Hora_Cita", model.Hora_Cita);
+                parameters.Add(
+                    "@Fecha_Cita",
+                    model.Fecha_Cita,
+                    DbType.Date);
+                parameters.Add(
+                "@Hora_Cita",
+                model.Hora_Cita,
+                DbType.Time);
                 parameters.Add("@Id_Usuario_Cita", model.Id_Usuario_Cita);
                 parameters.Add("@Id_Usuario_Encargado", model.Id_Usuario_Encargado);
                 parameters.Add("@Observacion_Inicial", model.Observacion_Inicial);
