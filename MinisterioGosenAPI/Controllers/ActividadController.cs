@@ -1,9 +1,7 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using Npgsql;
-using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -38,161 +36,229 @@ namespace MinisterioGosenAPI.Controllers
         }
 
         [HttpPost("CrearActividadAPI")]
-        public IActionResult CrearActividadAPI(ActividadModel model)
+        public async Task<IActionResult> CrearActividadAPI(ActividadModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-            parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-            parameters.Add("@Fecha_Fin", model.Fecha_Fin);
-            parameters.Add("@Lugar", model.Lugar);
-            parameters.Add("@Hora_Ini", model.Hora_Ini);
-            parameters.Add("@Hora_Fin", model.Hora_Fin);
-            parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
-
-            var idActividad = context.QuerySingle<int>(
-                                        @"SELECT spCrearActividad(
-                                        @Nombre_Actividad,
-                                        @Fecha_Ini,
-                                        @Fecha_Fin,
-                                        @Lugar,
-                                        @Hora_Ini,
-                                        @Hora_Fin,
-                                        @Id_Tipo_Actividad)",parameters);
-
-            if (idActividad > 0)
+            try
             {
-                if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
-                {
-                    var parametersMinisterio = new DynamicParameters();
-                    parametersMinisterio.Add("@Id_Actividad", idActividad);
-                    parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
-                    parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
+                parameters.Add("@Fecha_Ini", model.Fecha_Ini);
+                parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                parameters.Add("@Lugar", model.Lugar);
+                parameters.Add("@Hora_Ini", model.Hora_Ini);
+                parameters.Add("@Hora_Fin", model.Hora_Fin);
+                parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
 
-                    context.Execute(@"CALL spGuardarMinisterioActividad(
+                var idActividad = await context.QuerySingleAsync<int>(
+                                            @"SELECT spCrearActividad(
+                                            @Nombre_Actividad,
+                                            @Fecha_Ini,
+                                            @Fecha_Fin,
+                                            @Lugar,
+                                            @Hora_Ini,
+                                            @Hora_Fin,
+                                            @Id_Tipo_Actividad)", parameters);
+
+                if (idActividad > 0)
+                {
+                    if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
+                    {
+                        var parametersMinisterio = new DynamicParameters();
+                        parametersMinisterio.Add("@Id_Actividad", idActividad);
+                        parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
+                        parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
+
+                        await context.ExecuteAsync(@"CALL spGuardarMinisterioActividad(
                                                    @Id_Actividad,
                                                    @Id_Ministerio,
                                                    @Observacion)", parametersMinisterio);
+                    }
+
+                    return Ok(idActividad);
                 }
 
-                return Ok(idActividad);
+                return BadRequest("No se ha registrado la actividad");
             }
-
-            return BadRequest("No se ha registrado la actividad");
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("ActualizarActividadAPI")]
-        public IActionResult ActualizarActividadAPI(ActividadModel model)
+        public async Task<IActionResult> ActualizarActividadAPI(ActividadModel model)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Actividad", model.Id_Actividad);
-            parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
-            parameters.Add("@Fecha_Ini", model.Fecha_Ini);
-            parameters.Add("@Fecha_Fin", model.Fecha_Fin);
-            parameters.Add("@Lugar", model.Lugar);
-            parameters.Add("@Hora_Ini", model.Hora_Ini);
-            parameters.Add("@Hora_Fin", model.Hora_Fin);
-            parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
-
-            var response = context.Execute(@"CALL spActualizarActividad(
-                                        @Id_Actividad,
-                                        @Nombre_Actividad,
-                                        @Fecha_Ini,
-                                        @Fecha_Fin,
-                                        @Lugar,
-                                        @Hora_Ini,
-                                        @Hora_Fin,
-                                        @Id_Tipo_Actividad)",parameters);
-
-            if (response > 0)
+            try
             {
-                if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Actividad", model.Id_Actividad);
+                parameters.Add("@Nombre_Actividad", model.Nombre_Actividad);
+                parameters.Add("@Fecha_Ini", model.Fecha_Ini);
+                parameters.Add("@Fecha_Fin", model.Fecha_Fin);
+                parameters.Add("@Lugar", model.Lugar);
+                parameters.Add("@Hora_Ini", model.Hora_Ini);
+                parameters.Add("@Hora_Fin", model.Hora_Fin);
+                parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+
+                var response = await context.ExecuteAsync(@"CALL spActualizarActividad(
+                                            @Id_Actividad,
+                                            @Nombre_Actividad,
+                                            @Fecha_Ini,
+                                            @Fecha_Fin,
+                                            @Lugar,
+                                            @Hora_Ini,
+                                            @Hora_Fin,
+                                            @Id_Tipo_Actividad)", parameters);
+
+                if (response > 0)
                 {
-                    var parametersMinisterio = new DynamicParameters();
-                    parametersMinisterio.Add("@Id_Actividad", model.Id_Actividad);
-                    parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
-                    parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
+                    if (model.Id_Ministerio != null && model.Id_Ministerio > 0)
+                    {
+                        var parametersMinisterio = new DynamicParameters();
+                        parametersMinisterio.Add("@Id_Actividad", model.Id_Actividad);
+                        parametersMinisterio.Add("@Id_Ministerio", model.Id_Ministerio);
+                        parametersMinisterio.Add("@Observacion", model.Observacion_Ministerio_Actividad);
 
-                    context.Execute(@"CALL spGuardarMinisterioActividad(
-                                        @Id_Actividad,
-                                        @Id_Ministerio,
-                                        @Observacion)",parametersMinisterio);
+                        await context.ExecuteAsync(@"CALL spGuardarMinisterioActividad(
+                                            @Id_Actividad,
+                                            @Id_Ministerio,
+                                            @Observacion)", parametersMinisterio);
+                    }
+                    else
+                    {
+                        var parametersEliminarMinisterio = new DynamicParameters();
+                        parametersEliminarMinisterio.Add("@Id_Actividad", model.Id_Actividad);
+
+                        await context.ExecuteAsync("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersEliminarMinisterio);
+                    }
+
+                    return Ok(response);
                 }
-                else
-                {
-                    var parametersEliminarMinisterio = new DynamicParameters();
-                    parametersEliminarMinisterio.Add("@Id_Actividad", model.Id_Actividad);
 
-                    context.Execute("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersEliminarMinisterio);
-                }
-
-                return Ok(response);
+                return BadRequest("No se ha actualizado la actividad");
             }
-
-            return BadRequest("No se ha actualizado la actividad");
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("EliminarActividadAPI")]
-        public IActionResult EliminarActividadAPI(int id)
+        public async Task<IActionResult> EliminarActividadAPI(int id)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             try
             {
                 var parametersMinisterio = new DynamicParameters();
                 parametersMinisterio.Add("@Id_Actividad", id);
 
-                context.Execute("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersMinisterio);
+                await context.ExecuteAsync("CALL spEliminarMinisterioPorActividad(@Id_Actividad)", parametersMinisterio);
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Id_Actividad", id);
 
-                var response = context.Execute("CALL spEliminarActividad(@Id_Actividad)", parameters);
+                var response = await context.ExecuteAsync("CALL spEliminarActividad(@Id_Actividad)", parameters);
 
                 if (response > 0)
                     return Ok(response);
 
                 return BadRequest("No se ha eliminado la actividad");
             }
-            catch
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest("No se puede eliminar esta actividad porque tiene información relacionada.");
+            }
+            catch (Exception ex)
             {
                 return BadRequest("No se puede eliminar esta actividad porque tiene información relacionada.");
             }
         }
 
         [HttpPut("InactivarActividadAPI")]
-        public IActionResult InactivarActividadAPI(int id)
+        public async Task<IActionResult> InactivarActividadAPI(int id)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Actividad", id);
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Actividad", id);
 
-            var response = context.Execute("CALL spInactivarActividad(@Id_Actividad)", parameters);
+                var response = await context.ExecuteAsync("CALL spInactivarActividad(@Id_Actividad)", parameters);
 
-            if (response > 0)
-                return Ok(response);
+                if (response > 0)
+                    return Ok(response);
 
-            return BadRequest("No se pudo inactivar la actividad.");
+                return BadRequest("No se pudo inactivar la actividad.");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("ActivarActividadAPI")]
-        public IActionResult ActivarActividadAPI(int id)
+        public async Task<IActionResult> ActivarActividadAPI(int id)
         {
-            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Actividad", id);
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Actividad", id);
 
-            var response = context.Execute("CALL spActivarActividad(@Id_Actividad)", parameters);
+                var response = await context.ExecuteAsync("CALL spActivarActividad(@Id_Actividad)", parameters);
 
-            if (response > 0)
-                return Ok(response);
+                if (response > 0)
+                    return Ok(response);
 
-            return BadRequest("No se pudo activar la actividad.");
+                return BadRequest("No se pudo activar la actividad.");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost("ReporteActividadesAPI")]

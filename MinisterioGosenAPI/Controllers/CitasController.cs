@@ -1,9 +1,7 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using Npgsql;
-using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -69,9 +67,15 @@ namespace MinisterioGosenAPI.Controllers
 
                 return BadRequest("No se ha registrado la cita.");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
-                // Captura los RAISERROR lanzados desde el Stored Procedure
+                // Error generado por PostgreSQL:
+                // constraint, RAISE EXCEPTION, FK, etc.
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
@@ -111,8 +115,15 @@ namespace MinisterioGosenAPI.Controllers
 
                 return BadRequest("No se ha actualizado la cita.");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
+                // Error generado por PostgreSQL:
+                // constraint, RAISE EXCEPTION, FK, etc.
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
@@ -142,8 +153,15 @@ namespace MinisterioGosenAPI.Controllers
 
                 return BadRequest("No se ha podido marcar la cita como atendida.");
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
+                // Error generado por PostgreSQL:
+                // constraint, RAISE EXCEPTION, FK, etc.
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                // Problemas del proveedor/conexión
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)

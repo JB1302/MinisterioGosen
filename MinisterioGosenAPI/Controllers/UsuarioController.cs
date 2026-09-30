@@ -1,10 +1,8 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Npgsql;
 using MinisterioGosenAPI.Models;
-using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {

@@ -1,9 +1,8 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
 using Npgsql;
-using System.Data;
+using System.Text.Json;
 
 namespace MinisterioGosen.Controllers
 {
@@ -11,6 +10,18 @@ namespace MinisterioGosen.Controllers
     [ApiController]
     public class DashboardController(IConfiguration _configuration) : ControllerBase
     {
+        private class DashboardDbRow
+        {
+            public int TotalPersonas { get; set; }
+            public int TotalActividades { get; set; }
+            public int TotalMinisterios { get; set; }
+            public int TotalCitasPendientes { get; set; }
+            public string CitasEstado { get; set; } = "[]";
+            public string ActividadesMes { get; set; } = "[]";
+            public string TopActividades { get; set; } = "[]";
+            public string PersonasMinisterio { get; set; } = "[]";
+        }
+
         [HttpGet]
         [Route("ConsultarDashboardAPI")]
         public async Task<IActionResult> ConsultarDashboardAPI()
@@ -20,49 +31,69 @@ namespace MinisterioGosen.Controllers
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection = new NpgsqlConnection(connectionString);
-                await connection.OpenAsync();
-                using var resultados = await connection.QueryMultipleAsync("spConsultarDashboard");
 
-                /*
-                 * Resultado 1:
-                 * Totales principales del dashboard.
-                 */
-                var dashboard = await resultados.ReadFirstOrDefaultAsync<DashboardModel>();
-                if (dashboard == null)
+                var row = await connection.QuerySingleAsync<DashboardDbRow>(
+                    """
+                    SELECT
+                        totalpersonas AS "TotalPersonas",
+                        totalactividades AS "TotalActividades",
+                        totalministerios AS "TotalMinisterios",
+                        totalcitaspendientes AS "TotalCitasPendientes",
+                        citas_estado::text AS "CitasEstado",
+                        actividades_mes::text AS "ActividadesMes",
+                        top_actividades::text AS "TopActividades",
+                        personas_ministerio::text AS "PersonasMinisterio"
+                    FROM spConsultarDashboard()
+                    """
+                );
+
+                if (row == null)
                 {
                     return NotFound(new
                     {
-                        mensaje ="No se encontró información para el dashboard."
+                        mensaje = "No se encontró información para el dashboard."
                     });
                 }
 
-                /*
-                 * Resultado 2:
-                 * Citas agrupadas por estado.
-                 */
-                dashboard.CitasPorEstado =(await resultados.ReadAsync<DashboardGraficoModel>()).ToList();
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    PropertyNameCaseInsensitive = true
+                };
 
-                /*
-                 * Resultado 3:
-                 * Actividades agrupadas por mes.
-                 */
-                dashboard.ActividadesPorMes = (await resultados.ReadAsync<DashboardGraficoModel>()).ToList();
+                var dashboard = new DashboardModel
+                {
+                    TotalPersonas = row.TotalPersonas,
+                    TotalActividades = row.TotalActividades,
+                    TotalMinisterios = row.TotalMinisterios,
+                    TotalCitasPendientes = row.TotalCitasPendientes,
+                    CitasPorEstado = JsonSerializer.Deserialize<List<DashboardGraficoModel>>(
+                        row.CitasEstado, jsonOptions) ?? new(),
+                    ActividadesPorMes = JsonSerializer.Deserialize<List<DashboardGraficoModel>>(
+                        row.ActividadesMes, jsonOptions) ?? new(),
+                    AsistenciaPorActividad = JsonSerializer.Deserialize<List<DashboardGraficoModel>>(
+                        row.TopActividades, jsonOptions) ?? new(),
+                    PersonasPorMinisterio = JsonSerializer.Deserialize<List<DashboardGraficoModel>>(
+                        row.PersonasMinisterio, jsonOptions) ?? new()
+                };
 
-                /*
-                 * Resultado 4:
-                 * Asistencia o personas registradas por actividad.
-                 */
-                dashboard.AsistenciaPorActividad = (await resultados.ReadAsync<DashboardGraficoModel>()).ToList();
-
-                /*
-                 * Resultado 5:
-                 * Personas agrupadas por ministerio.
-                 */
-                dashboard.PersonasPorMinisterio = (await resultados.ReadAsync<DashboardGraficoModel>()).ToList();
                 return Ok(dashboard);
             }
-            catch (SqlException ex)
+            catch (PostgresException ex)
             {
+                // Error generado por PostgreSQL:
+                // constraint, RAISE EXCEPTION, FK, etc.
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        mensaje = "Ocurrió un error al consultar la base de datos.", detalle = ex.MessageText
+                    }
+                );
+            }
+            catch (NpgsqlException ex)
+            {
+                // Problemas del proveedor/conexión
                 return StatusCode(
                     StatusCodes.Status500InternalServerError,
                     new

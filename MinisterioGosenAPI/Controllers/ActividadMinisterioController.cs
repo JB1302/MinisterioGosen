@@ -1,10 +1,8 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosen.Models;
 using MinisterioGosenAPI.Models;
 using Npgsql;
-using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -92,7 +90,7 @@ namespace MinisterioGosenAPI.Controllers
 		}
 
 		[HttpPut("ActualizarActividadMinisterioAPI")]
-		public IActionResult ActualizarActividadMinisterioAPI([FromBody] ActividadMinisterioModel model)
+		public async Task<IActionResult> ActualizarActividadMinisterioAPI([FromBody] ActividadMinisterioModel model)
 		{
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState);
@@ -100,29 +98,43 @@ namespace MinisterioGosenAPI.Controllers
 			if (model.Id_Minis_Actividad <= 0)
 				return BadRequest(new { Success = false, Message = "El identificador de la actividad ministerial es obligatorio" });
 
-			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-			var parameters = new DynamicParameters();
-			parameters.Add("@Id_Minis_Actividad", model.Id_Minis_Actividad);
-			parameters.Add("@Id_Actividad", model.Id_Actividad);
-			parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Observacion", model.Observacion);
+			await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            context.Execute(
-                @"CALL spActualizarActividadesMinisterio(
-					@Id_Minis_Actividad,
-					@Id_Actividad,
-					@Id_Ministerio,
-					@Fecha,
-					@Observacion)",parameters);
+			try
+			{
+				var parameters = new DynamicParameters();
+				parameters.Add("@Id_Minis_Actividad", model.Id_Minis_Actividad);
+				parameters.Add("@Id_Actividad", model.Id_Actividad);
+				parameters.Add("@Id_Ministerio", model.Id_Ministerio);
+				parameters.Add("@Fecha", model.Fecha);
+				parameters.Add("@Observacion", model.Observacion);
 
-						return Ok(new
-						{
-							Success = true,
-							Message = "Actividad ministerial actualizada correctamente"
-						});
+				await context.ExecuteAsync(
+					@"CALL spActualizarActividadesMinisterio(
+						@Id_Minis_Actividad,
+						@Id_Actividad,
+						@Id_Ministerio,
+						@Fecha,
+						@Observacion)", parameters);
 
-            //return BadRequest(new { Success = false, Message = "No se ha actualizado la actividad ministerial" });
+				return Ok(new
+				{
+					Success = true,
+					Message = "Actividad ministerial actualizada correctamente"
+				});
+			}
+			catch (PostgresException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.MessageText });
+			}
+			catch (NpgsqlException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "Error al actualizar la actividad ministerial: " + ex.Message });
+			}
 		}
 
 
