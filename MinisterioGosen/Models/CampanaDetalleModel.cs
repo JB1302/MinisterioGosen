@@ -1,6 +1,6 @@
 ﻿namespace MinisterioGosen.Models
 {
-    public class CampanaHistorialModel
+    public class CampanaDetalleModel
     {
         public int Id_Campana { get; set; }
 
@@ -10,7 +10,16 @@
         public string Asunto { get; set; } =
             string.Empty;
 
+        public string Contenido { get; set; } =
+            string.Empty;
+
         public string Plantilla { get; set; } =
+            string.Empty;
+
+        public string Nombre_Plantilla { get; set; } =
+            string.Empty;
+
+        public string Color_Encabezado { get; set; } =
             string.Empty;
 
         public string Estado { get; set; } =
@@ -24,11 +33,5 @@
 
         public string Nombre_Creador { get; set; } =
             string.Empty;
-
-        public long Total_Destinatarios { get; set; }
-
-        public long Total_Enviados { get; set; }
-
-        public long Total_Errores { get; set; }
     }
 }

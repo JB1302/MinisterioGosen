@@ -43,11 +43,11 @@ namespace MinisterioGosen.Controllers
 
 
         // =========================================================
-        // INDEX
+        // INDEX - HISTORIAL DE CAMPAÑAS
         // =========================================================
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             if (!EsAdmin())
             {
@@ -62,18 +62,189 @@ namespace MinisterioGosen.Controllers
             }
 
 
-            /*
-             * Temporal.
-             *
-             * Más adelante esta acción mostrará
-             * el historial de campañas.
-             */
-            return RedirectToAction(
-                nameof(Crear)
-            );
+            using var client =
+                _http.CreateClient();
+
+
+            var url =
+                _config["Valores:UrlApi"] +
+                "Campana/ListarCampanasAPI";
+
+
+            try
+            {
+                var response =
+                    await client.GetAsync(url);
+
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    ViewBag.Mensaje =
+                        "No fue posible cargar el historial de campañas.";
+
+                    return View(
+                        new List<CampanaHistorialModel>()
+                    );
+                }
+
+
+                var campanas =
+                    await response.Content
+                        .ReadFromJsonAsync<
+                            List<CampanaHistorialModel>
+                        >()
+                    ?? new List<CampanaHistorialModel>();
+
+
+                return View(campanas);
+            }
+            catch (HttpRequestException)
+            {
+                ViewBag.Mensaje =
+                    "No fue posible comunicarse con la API.";
+
+                return View(
+                    new List<CampanaHistorialModel>()
+                );
+            }
         }
 
 
+
+        // =========================================================
+        // DETALLE DE CAMPAÑA
+        // =========================================================
+
+        [HttpGet]
+        public async Task<IActionResult> Detalle(
+            int idCampana)
+        {
+            if (!EsAdmin())
+            {
+                return RedirectToAction(
+                    "Error",
+                    "Home",
+                    new
+                    {
+                        statusCode = 403
+                    }
+                );
+            }
+
+
+            if (idCampana <= 0)
+            {
+                return RedirectToAction(
+                    nameof(Index)
+                );
+            }
+
+
+            using var client =
+                _http.CreateClient();
+
+
+            var urlCampana =
+                _config["Valores:UrlApi"] +
+                $"Campana/ObtenerCampanaAPI/{idCampana}";
+
+
+            var urlDestinatarios =
+                _config["Valores:UrlApi"] +
+                $"Campana/ListarDestinatariosCampanaAPI/{idCampana}";
+
+
+            try
+            {
+                // =====================================================
+                // OBTENER CAMPAÑA
+                // =====================================================
+
+                var responseCampana =
+                    await client.GetAsync(
+                        urlCampana
+                    );
+
+
+                if (!responseCampana.IsSuccessStatusCode)
+                {
+                    return RedirectToAction(
+                        nameof(Index)
+                    );
+                }
+
+
+                var campana =
+                    await responseCampana.Content
+                        .ReadFromJsonAsync<
+                            CampanaDetalleModel
+                        >();
+
+
+                if (campana == null)
+                {
+                    return RedirectToAction(
+                        nameof(Index)
+                    );
+                }
+
+
+                // =====================================================
+                // OBTENER DESTINATARIOS
+                // =====================================================
+
+                var responseDestinatarios =
+                    await client.GetAsync(
+                        urlDestinatarios
+                    );
+
+
+                var destinatarios =
+                    new List<
+                        CampanaDestinatarioDetalleModel
+                    >();
+
+
+                if (responseDestinatarios.IsSuccessStatusCode)
+                {
+                    destinatarios =
+                        await responseDestinatarios.Content
+                            .ReadFromJsonAsync<
+                                List<CampanaDestinatarioDetalleModel>
+                            >()
+                        ?? new List<
+                            CampanaDestinatarioDetalleModel
+                        >();
+                }
+
+
+                // =====================================================
+                // VIEW MODEL
+                // =====================================================
+
+                var model =
+                    new CampanaDetalleViewModel
+                    {
+                        Campana =
+                            campana,
+
+                        Destinatarios =
+                            destinatarios
+                    };
+
+
+                return View(model);
+            }
+            catch (HttpRequestException)
+            {
+                TempData["Mensaje"] =
+                    "No fue posible comunicarse con la API.";
+
+                return RedirectToAction(
+                    nameof(Index)
+                );
+            }
+        }
         // =========================================================
         // CREAR - GET
         // =========================================================

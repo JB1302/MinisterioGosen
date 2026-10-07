@@ -1,6 +1,6 @@
-﻿namespace MinisterioGosen.Models
+﻿namespace MinisterioGosenAPI.Models
 {
-    public class CampanaHistorialModel
+    public class CampanaHistorialResponseModel
     {
         public int Id_Campana { get; set; }
 

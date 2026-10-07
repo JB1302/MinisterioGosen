@@ -1949,6 +1949,171 @@ AS $$
         cd.id_campana_destinatario;
 $$;
 
+-- =============================================================
+-- LISTAR CAMPAÑAS
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarCampanas()
+RETURNS TABLE (
+    id_campana integer,
+    titulo varchar(150),
+    asunto varchar(200),
+    plantilla varchar(30),
+    estado varchar(20),
+    fecha_creacion timestamp,
+    fecha_envio timestamp,
+    id_usuario_creador integer,
+    nombre_creador varchar(100),
+    total_destinatarios bigint,
+    total_enviados bigint,
+    total_errores bigint
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.plantilla,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre AS nombre_creador,
+
+        COUNT(cd.id_campana_destinatario)
+            AS total_destinatarios,
+
+        COUNT(cd.id_campana_destinatario)
+            FILTER (
+                WHERE cd.estado_envio = 'Enviado'
+            )
+            AS total_enviados,
+
+        COUNT(cd.id_campana_destinatario)
+            FILTER (
+                WHERE cd.estado_envio = 'Error'
+            )
+            AS total_errores
+
+    FROM campana c
+
+    INNER JOIN usuario u
+        ON u.id_usuario =
+           c.id_usuario_creador
+
+    LEFT JOIN campana_destinatario cd
+        ON cd.id_campana =
+           c.id_campana
+
+    GROUP BY
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.plantilla,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre
+
+    ORDER BY
+        c.fecha_creacion DESC,
+        c.id_campana DESC;
+$$;
+
+
+-- =============================================================
+-- OBTENER CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spObtenerCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana integer,
+    titulo varchar(150),
+    asunto varchar(200),
+    contenido text,
+    plantilla varchar(30),
+    nombre_plantilla varchar(50),
+    color_encabezado varchar(20),
+    estado varchar(20),
+    fecha_creacion timestamp,
+    fecha_envio timestamp,
+    id_usuario_creador integer,
+    nombre_creador varchar(100)
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.contenido,
+        c.plantilla,
+        cp.nombre AS nombre_plantilla,
+        cp.color_encabezado,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre AS nombre_creador
+
+    FROM campana c
+
+    INNER JOIN usuario u
+        ON u.id_usuario =
+           c.id_usuario_creador
+
+    INNER JOIN campana_plantilla cp
+        ON cp.codigo =
+           c.plantilla
+
+    WHERE
+        c.id_campana =
+        p_id_campana;
+$$;
+
+
+-- =============================================================
+-- LISTAR DESTINATARIOS DE UNA CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarDestinatariosCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana_destinatario bigint,
+    id_usuario integer,
+    nombre_destinatario varchar(100),
+    correo_destinatario varchar(100),
+    estado_envio varchar(20),
+    fecha_envio timestamp,
+    detalle_error text
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cd.id_campana_destinatario,
+        cd.id_usuario,
+        cd.nombre_destinatario,
+        cd.correo_destinatario,
+        cd.estado_envio,
+        cd.fecha_envio,
+        cd.detalle_error
+
+    FROM campana_destinatario cd
+
+    WHERE
+        cd.id_campana =
+        p_id_campana
+
+    ORDER BY
+        cd.nombre_destinatario,
+        cd.id_campana_destinatario;
+$$;
+
 
 -- Permite ejecutar nuevamente el archivo de rutinas
 -- sin que falle porque el trigger ya existe.

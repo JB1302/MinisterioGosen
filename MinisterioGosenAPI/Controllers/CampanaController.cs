@@ -1,39 +1,6 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
-using Npgsql;
-using System.Net;
-
-namespace MinisterioGosenAPI.Controllers
-{
-    [Route("api/[controller]")]
-    [ApiController]
-    public class CampanaController(
-        IConfiguration _config) : ControllerBase
-    {
-        // =========================================================
-        // PLANTILLAS
-        // =========================================================
-
-        [HttpGet("ListarPlantillasCampanaAPI")]
-        public IActionResult ListarPlantillasCampanaAPI()
-        {
-            using var context =
-                new NpgsqlConnection(
-                    _config["ConnectionStrings:DefaultConnection"]
-                );
-
-            var response =
-                context.Query<CampanaPlantillaResponseModel>(
-                    "SELECT * FROM spListarPlantillasCampana()"
-                ).ToList();
-
-            return Ok(response);
-        }
-    }
-}using Dapper;
-using Microsoft.AspNetCore.Mvc;
-using MinisterioGosenAPI.Models;
 using MinisterioGosenAPI.Services;
 using Npgsql;
 using System.Net;
@@ -47,7 +14,7 @@ namespace MinisterioGosenAPI.Controllers
         IUtilesService _utiles) : ControllerBase
     {
         // =========================================================
-        // PLANTILLAS
+        // LISTAR PLANTILLAS
         // =========================================================
 
         [HttpGet("ListarPlantillasCampanaAPI")]
@@ -58,13 +25,127 @@ namespace MinisterioGosenAPI.Controllers
                     _config["ConnectionStrings:DefaultConnection"]
                 );
 
-
             var response =
                 context.Query<CampanaPlantillaResponseModel>(
                     "SELECT * FROM spListarPlantillasCampana()"
                 )
                 .ToList();
 
+            return Ok(response);
+        }
+
+
+        // =========================================================
+        // LISTAR HISTORIAL DE CAMPAÑAS
+        // =========================================================
+
+        [HttpGet("ListarCampanasAPI")]
+        public async Task<IActionResult> ListarCampanasAPI()
+        {
+            await using var context =
+                new NpgsqlConnection(
+                    _config["ConnectionStrings:DefaultConnection"]
+                );
+
+            var response =
+                (
+                    await context.QueryAsync<
+                        CampanaHistorialResponseModel
+                    >(
+                        "SELECT * FROM spListarCampanas();"
+                    )
+                )
+                .ToList();
+
+            return Ok(response);
+        }
+
+
+        // =========================================================
+        // OBTENER DETALLE DE CAMPAÑA
+        // =========================================================
+
+        [HttpGet("ObtenerCampanaAPI/{idCampana:int}")]
+        public async Task<IActionResult> ObtenerCampanaAPI(
+            int idCampana)
+        {
+            if (idCampana <= 0)
+            {
+                return BadRequest(
+                    "El identificador de la campaña no es válido."
+                );
+            }
+
+            await using var context =
+                new NpgsqlConnection(
+                    _config["ConnectionStrings:DefaultConnection"]
+                );
+
+            var response =
+                await context.QueryFirstOrDefaultAsync<
+                    CampanaDetalleResponseModel
+                >(
+                    @"
+                    SELECT *
+                    FROM spObtenerCampana(
+                        @IdCampana
+                    );
+                    ",
+                    new
+                    {
+                        IdCampana = idCampana
+                    }
+                );
+
+            if (response == null)
+            {
+                return NotFound(
+                    "No se encontró la campaña indicada."
+                );
+            }
+
+            return Ok(response);
+        }
+
+
+        // =========================================================
+        // LISTAR DESTINATARIOS DE UNA CAMPAÑA
+        // =========================================================
+
+        [HttpGet("ListarDestinatariosCampanaAPI/{idCampana:int}")]
+        public async Task<IActionResult> ListarDestinatariosCampanaAPI(
+            int idCampana)
+        {
+            if (idCampana <= 0)
+            {
+                return BadRequest(
+                    "El identificador de la campaña no es válido."
+                );
+            }
+
+            await using var context =
+                new NpgsqlConnection(
+                    _config["ConnectionStrings:DefaultConnection"]
+                );
+
+            var response =
+                (
+                    await context.QueryAsync<
+                        CampanaDestinatarioDetalleResponseModel
+                    >(
+                        @"
+                        SELECT *
+                        FROM spListarDestinatariosCampana(
+                            @IdCampana
+                        );
+                        ",
+                        new
+                        {
+                            IdCampana = idCampana
+                        }
+                    )
+                )
+                .ToList();
 
             return Ok(response);
         }
@@ -79,7 +160,7 @@ namespace MinisterioGosenAPI.Controllers
             CampanaCrearRequestModel model)
         {
             // =====================================================
-            // VALIDACIONES BÁSICAS
+            // VALIDACIONES
             // =====================================================
 
             if (model == null)
@@ -89,14 +170,12 @@ namespace MinisterioGosenAPI.Controllers
                 );
             }
 
-
             if (string.IsNullOrWhiteSpace(model.Titulo))
             {
                 return BadRequest(
                     "Debe ingresar el título de la campaña."
                 );
             }
-
 
             if (string.IsNullOrWhiteSpace(model.Asunto))
             {
@@ -105,14 +184,12 @@ namespace MinisterioGosenAPI.Controllers
                 );
             }
 
-
             if (string.IsNullOrWhiteSpace(model.Contenido))
             {
                 return BadRequest(
                     "Debe ingresar el contenido de la campaña."
                 );
             }
-
 
             if (string.IsNullOrWhiteSpace(model.Plantilla))
             {
@@ -121,7 +198,6 @@ namespace MinisterioGosenAPI.Controllers
                 );
             }
 
-
             if (model.Id_Usuario_Creador <= 0)
             {
                 return BadRequest(
@@ -129,10 +205,8 @@ namespace MinisterioGosenAPI.Controllers
                 );
             }
 
-
             model.Ids_Roles ??= [];
             model.Ids_Ministerios ??= [];
-
 
             if (
                 !model.Todos &&
@@ -147,11 +221,14 @@ namespace MinisterioGosenAPI.Controllers
             }
 
 
+            // =====================================================
+            // CONEXIÓN
+            // =====================================================
+
             await using var context =
                 new NpgsqlConnection(
                     _config["ConnectionStrings:DefaultConnection"]
                 );
-
 
             try
             {
@@ -165,15 +242,16 @@ namespace MinisterioGosenAPI.Controllers
                 await using var transaction =
                     await context.BeginTransactionAsync();
 
-
                 int idCampana;
-
 
                 try
                 {
+                    // =============================================
+                    // CREAR CAMPAÑA
+                    // =============================================
+
                     var parametrosCampana =
                         new DynamicParameters();
-
 
                     parametrosCampana.Add(
                         "@Titulo",
@@ -200,12 +278,6 @@ namespace MinisterioGosenAPI.Controllers
                         model.Id_Usuario_Creador
                     );
 
-
-                    /*
-                     * Los CAST se utilizan porque Npgsql
-                     * envía los string como TEXT y las
-                     * funciones PostgreSQL reciben VARCHAR.
-                     */
                     idCampana =
                         await context.QuerySingleAsync<int>(
                             @"
@@ -222,9 +294,12 @@ namespace MinisterioGosenAPI.Controllers
                         );
 
 
+                    // =============================================
+                    // CREAR DESTINATARIOS
+                    // =============================================
+
                     var parametrosDestinatarios =
                         new DynamicParameters();
-
 
                     parametrosDestinatarios.Add(
                         "@IdCampana",
@@ -246,7 +321,6 @@ namespace MinisterioGosenAPI.Controllers
                         model.Todos
                     );
 
-
                     await context.ExecuteAsync(
                         @"
                         CALL spCrearDestinatariosCampana(
@@ -262,7 +336,7 @@ namespace MinisterioGosenAPI.Controllers
 
 
                     // =============================================
-                    // VERIFICAR QUE EXISTAN DESTINATARIOS
+                    // COMPROBAR DESTINATARIOS
                     // =============================================
 
                     var totalDestinatarios =
@@ -279,7 +353,6 @@ namespace MinisterioGosenAPI.Controllers
                             transaction
                         );
 
-
                     if (totalDestinatarios == 0)
                     {
                         throw new InvalidOperationException(
@@ -290,7 +363,7 @@ namespace MinisterioGosenAPI.Controllers
 
 
                     // =============================================
-                    // CAMPAÑA EN PROCESO
+                    // MARCAR COMO PROCESANDO
                     // =============================================
 
                     await context.ExecuteAsync(
@@ -307,13 +380,11 @@ namespace MinisterioGosenAPI.Controllers
                         transaction
                     );
 
-
                     await transaction.CommitAsync();
                 }
                 catch
                 {
                     await transaction.RollbackAsync();
-
                     throw;
                 }
 
@@ -341,7 +412,6 @@ namespace MinisterioGosenAPI.Controllers
                     )
                     .ToList();
 
-
                 if (destinatarios.Count == 0)
                 {
                     await context.ExecuteAsync(
@@ -357,7 +427,6 @@ namespace MinisterioGosenAPI.Controllers
                         }
                     );
 
-
                     return BadRequest(
                         "No se encontraron destinatarios " +
                         "pendientes para la campaña."
@@ -366,7 +435,7 @@ namespace MinisterioGosenAPI.Controllers
 
 
                 // =================================================
-                // 3. OBTENER COLOR DE LA PLANTILLA
+                // 3. OBTENER COLOR DE PLANTILLA
                 // =================================================
 
                 var colorPlantilla =
@@ -384,7 +453,6 @@ namespace MinisterioGosenAPI.Controllers
                         }
                     );
 
-
                 if (string.IsNullOrWhiteSpace(colorPlantilla))
                 {
                     colorPlantilla =
@@ -393,12 +461,11 @@ namespace MinisterioGosenAPI.Controllers
 
 
                 // =================================================
-                // 4. ENVIAR CORREOS INDIVIDUALMENTE
+                // 4. ENVIAR CORREOS
                 // =================================================
 
                 var enviados = 0;
                 var errores = 0;
-
 
                 foreach (var destinatario in destinatarios)
                 {
@@ -412,17 +479,11 @@ namespace MinisterioGosenAPI.Controllers
                                 colorPlantilla
                             );
 
-
                         await _utiles.EnviarCorreoAsync(
                             destinatario.Correo_Destinatario,
                             model.Asunto,
                             cuerpoHtml
                         );
-
-
-                        // =========================================
-                        // MARCAR COMO ENVIADO
-                        // =========================================
 
                         await context.ExecuteAsync(
                             @"
@@ -440,24 +501,17 @@ namespace MinisterioGosenAPI.Controllers
                             }
                         );
 
-
                         enviados++;
                     }
                     catch (Exception ex)
                     {
                         errores++;
 
-
                         var detalleError =
                             ex.Message;
 
-
                         try
                         {
-                            // =====================================
-                            // MARCAR COMO ERROR
-                            // =====================================
-
                             await context.ExecuteAsync(
                                 @"
                                 CALL spActualizarEstadoEnvioCampana(
@@ -480,12 +534,8 @@ namespace MinisterioGosenAPI.Controllers
                         catch
                         {
                             /*
-                             * Si incluso falla el registro
-                             * del error, continuamos con el
-                             * siguiente destinatario.
-                             *
-                             * La excepción principal ya se
-                             * contabilizó como error.
+                             * Si falla el registro del error,
+                             * continuamos con los demás correos.
                              */
                         }
                     }
@@ -497,7 +547,6 @@ namespace MinisterioGosenAPI.Controllers
                 // =================================================
 
                 string estadoFinal;
-
 
                 if (
                     enviados > 0 &&
@@ -522,6 +571,10 @@ namespace MinisterioGosenAPI.Controllers
                 }
 
 
+                // =================================================
+                // 6. ACTUALIZAR ESTADO DE LA CAMPAÑA
+                // =================================================
+
                 await context.ExecuteAsync(
                     @"
                     CALL spActualizarEstadoCampana(
@@ -531,14 +584,17 @@ namespace MinisterioGosenAPI.Controllers
                     ",
                     new
                     {
-                        IdCampana = idCampana,
-                        Estado = estadoFinal
+                        IdCampana =
+                            idCampana,
+
+                        Estado =
+                            estadoFinal
                     }
                 );
 
 
                 // =================================================
-                // RESPUESTA
+                // 7. RESPUESTA
                 // =================================================
 
                 return Ok(
@@ -594,34 +650,21 @@ namespace MinisterioGosenAPI.Controllers
             string contenido,
             string colorEncabezado)
         {
-            /*
-             * Los textos ingresados por el usuario
-             * se codifican antes de insertarlos
-             * dentro del HTML.
-             */
-
             var nombreSeguro =
                 WebUtility.HtmlEncode(
                     nombre
                 );
-
 
             var tituloSeguro =
                 WebUtility.HtmlEncode(
                     titulo
                 );
 
-
             var contenidoSeguro =
                 WebUtility.HtmlEncode(
                     contenido
                 );
 
-
-            /*
-             * Conservamos los saltos de línea
-             * escritos en el formulario.
-             */
             contenidoSeguro =
                 contenidoSeguro
                     .Replace(
@@ -633,11 +676,6 @@ namespace MinisterioGosenAPI.Controllers
                         "<br>"
                     );
 
-
-            /*
-             * El color procede de la tabla
-             * campana_plantilla.
-             */
             var color =
                 string.IsNullOrWhiteSpace(
                     colorEncabezado
@@ -651,115 +689,145 @@ namespace MinisterioGosenAPI.Controllers
 
 <html>
 <head>
+
     <meta charset=""utf-8"">
 
-    <meta name=""viewport""
-          content=""width=device-width, initial-scale=1.0"">
+    <meta
+        name=""viewport""
+        content=""width=device-width, initial-scale=1.0"">
+
 </head>
 
-<body style=""
-    margin:0;
-    padding:0;
-    background-color:#f4f6f6;
-    font-family:Arial,Helvetica,sans-serif;
-    color:#343a40;
-"">
+<body
+    style=""
+        margin:0;
+        padding:0;
+        background-color:#f4f6f6;
+        font-family:Arial,Helvetica,sans-serif;
+        color:#343a40;
+    "">
 
-    <table role=""presentation""
-           width=""100%""
-           cellspacing=""0""
-           cellpadding=""0""
-           style=""
-                width:100%;
-                background-color:#f4f6f6;
-                padding:30px 15px;
-           "">
+    <table
+        role=""presentation""
+        width=""100%""
+        cellspacing=""0""
+        cellpadding=""0""
+        style=""
+            width:100%;
+            background-color:#f4f6f6;
+            padding:30px 15px;
+        "">
 
         <tr>
+
             <td align=""center"">
 
-                <table role=""presentation""
-                       width=""600""
-                       cellspacing=""0""
-                       cellpadding=""0""
-                       style=""
-                            width:100%;
-                            max-width:600px;
-                            background:#ffffff;
-                            border-radius:12px;
-                            overflow:hidden;
-                       "">
+                <table
+                    role=""presentation""
+                    width=""600""
+                    cellspacing=""0""
+                    cellpadding=""0""
+                    style=""
+                        width:100%;
+                        max-width:600px;
+                        background:#ffffff;
+                        border-radius:12px;
+                        overflow:hidden;
+                    "">
 
                     <tr>
-                        <td style=""
-                            padding:28px;
-                            background-color:{color};
-                            color:#ffffff;
-                        "">
 
-                            <div style=""
-                                font-size:13px;
-                                margin-bottom:8px;
-                                opacity:0.9;
+                        <td
+                            style=""
+                                padding:28px;
+                                background-color:{color};
+                                color:#ffffff;
                             "">
+
+                            <div
+                                style=""
+                                    font-size:13px;
+                                    margin-bottom:8px;
+                                    opacity:0.9;
+                                "">
+
                                 Ministerio Gosén
+
                             </div>
 
-                            <div style=""
-                                font-size:22px;
-                                font-weight:bold;
-                            "">
+                            <div
+                                style=""
+                                    font-size:22px;
+                                    font-weight:bold;
+                                "">
+
                                 {tituloSeguro}
+
                             </div>
 
                         </td>
+
                     </tr>
 
 
                     <tr>
-                        <td style=""
-                            padding:32px 28px;
-                            font-size:15px;
-                            line-height:1.6;
-                        "">
 
-                            <p style=""
-                                margin-top:0;
+                        <td
+                            style=""
+                                padding:32px 28px;
+                                font-size:15px;
+                                line-height:1.6;
                             "">
-                                Hola <strong>{nombreSeguro}</strong>,
+
+                            <p
+                                style=""
+                                    margin-top:0;
+                                "">
+
+                                Hola
+                                <strong>
+                                    {nombreSeguro}
+                                </strong>,
+
                             </p>
 
-
                             <div>
+
                                 {contenidoSeguro}
+
                             </div>
 
+                            <hr
+                                style=""
+                                    margin:30px 0;
+                                    border:0;
+                                    border-top:1px solid #e9ecef;
+                                "">
 
-                            <hr style=""
-                                margin:30px 0;
-                                border:0;
-                                border-top:1px solid #e9ecef;
-                            "">
+                            <div
+                                style=""
+                                    color:#6c757d;
+                                    font-size:13px;
+                                "">
 
-
-                            <div style=""
-                                color:#6c757d;
-                                font-size:13px;
-                            "">
                                 Ministerio Gosén
+
                             </div>
 
                         </td>
+
                     </tr>
 
                 </table>
 
             </td>
+
         </tr>
 
     </table>
 
 </body>
+
 </html>";
         }
     }
