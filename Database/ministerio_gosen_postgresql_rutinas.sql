@@ -298,9 +298,15 @@ BEGIN
 END;
 $$;
 
+-- Compatibilidad con Npgsql/Dapper:
+-- los parámetros string preparados llegan a PostgreSQL como TEXT.
+-- Se conserva el segundo parámetro original por compatibilidad.
+DROP FUNCTION IF EXISTS spIniciarSesionUsuario(varchar, varchar);
+DROP FUNCTION IF EXISTS spIniciarSesionUsuario(text, text);
+
 CREATE OR REPLACE FUNCTION spIniciarSesionUsuario(
-    p_correo varchar(100),
-    p_contrasena varchar(255) DEFAULT NULL
+    p_correo text,
+    p_contrasena text DEFAULT NULL
 )
 RETURNS TABLE (
     id_usuario integer,
@@ -321,7 +327,10 @@ AS $$
       AND u.estado = 'A';
 $$;
 
-CREATE OR REPLACE FUNCTION spValidarCorreo(p_correo varchar(100))
+DROP FUNCTION IF EXISTS spValidarCorreo(varchar);
+DROP FUNCTION IF EXISTS spValidarCorreo(text);
+
+CREATE OR REPLACE FUNCTION spValidarCorreo(p_correo text)
 RETURNS TABLE (
     id_usuario integer,
     identificacion varchar(20),
@@ -1505,6 +1514,30 @@ $$;
 -- =============================================================
 -- CAMPAÑAS
 -- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarPlantillasCampana()
+RETURNS TABLE (
+    codigo varchar(30),
+    nombre varchar(50),
+    descripcion varchar(200),
+    icono varchar(50),
+    color_encabezado varchar(20),
+    activo boolean
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cp.codigo,
+        cp.nombre,
+        cp.descripcion,
+        cp.icono,
+        cp.color_encabezado,
+        cp.activo
+    FROM campana_plantilla cp
+    WHERE cp.activo = true
+    ORDER BY cp.nombre;
+$$;
+
 
 CREATE OR REPLACE FUNCTION spCrearListaDistribucion(
     p_ids_roles integer[] DEFAULT ARRAY[]::integer[],

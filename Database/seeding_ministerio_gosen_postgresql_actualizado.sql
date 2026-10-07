@@ -2,15 +2,6 @@
 -- SEEDING POSTGRESQL - MINISTERIO GOSEN
 -- Actualizado para ministerio_gosen_postgresql_base.sql
 --
--- IMPORTANTE:
---   * Ejecutar conectado a la base: ministerio_gosen
---   * Conserva los registros existentes de usuario y rol.
---   * Limpia y repuebla las tablas operativas/demostrativas.
---   * Incluye el rol Miembro (3) y es compatible con el trigger
---     fn_sincronizar_rol_miembro / trg_sincronizar_rol_miembro.
---   * Los usuarios demo se crean como Usuario (2). Al recibir una membresía
---     activa, el trigger los convierte automáticamente en Miembro (3).
---   * Los Admin (1) nunca se modifican por la sincronización de membresía.
 --
 -- Credenciales de usuarios nuevos del seeding:
 --   Administrador: ministeriogosen@gmail.com / admin123
@@ -742,7 +733,56 @@ SELECT setval(pg_get_serial_sequence('chat_bot_opciones','id_opcion'), COALESCE(
 COMMIT;
 
 -- ============================================================================
--- 15. VALIDACION RAPIDA
+-- 15. campania_plantilla
+-- ============================================================================
+
+-- ============================================================================
+-- 14. PLANTILLAS DE CAMPAÑA
+-- ============================================================================
+
+INSERT INTO campana_plantilla (
+    codigo,
+    nombre,
+    descripcion,
+    icono,
+    color_encabezado,
+    activo
+)
+VALUES
+(
+    'General',
+    'General',
+    'Comunicaciones generales del Ministerio.',
+    'bi-envelope-paper-fill',
+    '#064442',
+    true
+),
+(
+    'Informativa',
+    'Informativa',
+    'Noticias, avisos y comunicados.',
+    'bi-info-circle-fill',
+    '#235c77',
+    true
+),
+(
+    'Recordatorio',
+    'Recordatorio',
+    'Reuniones, actividades y fechas importantes.',
+    'bi-bell-fill',
+    '#765720',
+    true
+)
+ON CONFLICT (codigo) DO UPDATE
+SET
+    nombre = EXCLUDED.nombre,
+    descripcion = EXCLUDED.descripcion,
+    icono = EXCLUDED.icono,
+    color_encabezado = EXCLUDED.color_encabezado,
+    activo = EXCLUDED.activo;
+
+-- ============================================================================
+-- 16. VALIDACION RAPIDA
 -- ============================================================================
 SELECT 'rol' AS tabla, COUNT(*) AS total FROM rol
 UNION ALL SELECT 'usuario', COUNT(*) FROM usuario

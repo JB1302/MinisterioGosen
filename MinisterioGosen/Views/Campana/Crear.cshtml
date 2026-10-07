@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Mvc.Rendering
+@using MinisterioGosen.Models
 @model MinisterioGosen.Models.CampanaCrearModel
 
 @{
@@ -9,6 +10,15 @@
 
     var ministerios = ViewBag.Ministerios as IEnumerable<SelectListItem>
                       ?? new List<SelectListItem>();
+
+    var plantillas = ViewBag.Plantillas as IEnumerable<CampanaPlantillaModel>
+                     ?? new List<CampanaPlantillaModel>();
+
+    var plantillaInicial = plantillas.FirstOrDefault(
+        x => x.Codigo == Model.Plantilla
+    ) ?? plantillas.FirstOrDefault();
+
+    var colorInicial = plantillaInicial?.Color_Encabezado ?? "#064442";
 }
 
 <link rel="stylesheet"
@@ -16,6 +26,10 @@
       asp-append-version="true" />
 
 <div class="container py-4">
+
+    <!-- ========================================================= -->
+    <!-- ENCABEZADO                                                -->
+    <!-- ========================================================= -->
 
     <div class="d-flex flex-column flex-md-row
                 justify-content-between align-items-md-center
@@ -28,7 +42,8 @@
             </h2>
 
             <p class="text-muted mb-0">
-                Cree un mensaje y seleccione las personas que recibirán la comunicación.
+                Cree un mensaje y seleccione las personas
+                que recibirán la comunicación.
             </p>
         </div>
 
@@ -38,23 +53,27 @@
 
             <i class="bi bi-arrow-left me-1"></i>
             Volver
-
         </a>
 
     </div>
 
 
+    <!-- ========================================================= -->
+    <!-- MENSAJES                                                  -->
+    <!-- ========================================================= -->
+
     @if (ViewBag.Mensaje != null)
     {
-        <div class="alert alert-warning d-flex
-                    align-items-center gap-2 rounded-3">
+        <div class="alert alert-warning
+                    d-flex align-items-center gap-2 rounded-3">
 
             <i class="bi bi-exclamation-triangle-fill"></i>
-            <span>@ViewBag.Mensaje</span>
 
+            <span>
+                @ViewBag.Mensaje
+            </span>
         </div>
     }
-
 
     <div id="mensajeValidacion"
          class="alert alert-danger d-none rounded-3"
@@ -63,9 +82,12 @@
         <i class="bi bi-exclamation-triangle-fill me-2"></i>
 
         <span id="textoValidacion"></span>
-
     </div>
 
+
+    <!-- ========================================================= -->
+    <!-- FORMULARIO                                                -->
+    <!-- ========================================================= -->
 
     <form asp-controller="Campana"
           asp-action="Crear"
@@ -81,7 +103,10 @@
 
             <div class="col-lg-8">
 
-                <!-- Contenido -->
+                <!-- ============================================= -->
+                <!-- CONTENIDO DE LA CAMPAÑA                       -->
+                <!-- ============================================= -->
+
                 <div class="campana-section shadow-sm p-4 mb-4">
 
                     <div class="d-flex align-items-start gap-3 mb-4">
@@ -114,7 +139,6 @@
 
                                 <i class="bi bi-type me-1 text-muted"></i>
                                 Título de la campaña
-
                             </label>
 
                             <input asp-for="Titulo"
@@ -134,7 +158,6 @@
                                 </small>
 
                             </div>
-
                         </div>
 
 
@@ -146,7 +169,6 @@
 
                                 <i class="bi bi-envelope-fill me-1 text-muted"></i>
                                 Asunto del correo
-
                             </label>
 
                             <input asp-for="Asunto"
@@ -166,7 +188,6 @@
                                 </small>
 
                             </div>
-
                         </div>
 
 
@@ -178,7 +199,6 @@
 
                                 <i class="bi bi-chat-left-text-fill me-1 text-muted"></i>
                                 Contenido
-
                             </label>
 
                             <textarea asp-for="Contenido"
@@ -203,7 +223,10 @@
                 </div>
 
 
-                <!-- Plantillas -->
+                <!-- ============================================= -->
+                <!-- PLANTILLAS DINÁMICAS                          -->
+                <!-- ============================================= -->
+
                 <div class="campana-section shadow-sm p-4 mb-4">
 
                     <div class="d-flex align-items-start gap-3 mb-4">
@@ -213,114 +236,89 @@
                         </div>
 
                         <div>
-
                             <div class="campana-section-title">
                                 Estilo del mensaje
                             </div>
 
                             <div class="campana-section-subtitle">
-                                Seleccione uno de los formatos predefinidos.
+                                Seleccione uno de los formatos
+                                predefinidos disponibles.
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    @if (plantillas.Any())
+                    {
+                        <div class="row g-3">
+
+                            @{
+                                var indicePlantilla = 0;
+                            }
+
+                            @foreach (var plantilla in plantillas)
+                            {
+                                var idPlantilla = $"plantilla_{indicePlantilla}";
+                                indicePlantilla++;
+
+                                <div class="col-md-4">
+
+                                    <input asp-for="Plantilla"
+                                           type="radio"
+                                           class="btn-check plantilla-option"
+                                           value="@plantilla.Codigo"
+                                           id="@idPlantilla"
+                                           data-color="@plantilla.Color_Encabezado"
+                                           autocomplete="off" />
+
+                                    <label for="@idPlantilla"
+                                           class="plantilla-card p-3 d-block">
+
+                                        <div class="campana-icon mb-3">
+                                            <i class="bi @plantilla.Icono"></i>
+                                        </div>
+
+                                        <div class="fw-bold">
+                                            @plantilla.Nombre
+                                        </div>
+
+                                        <small class="text-muted">
+                                            @plantilla.Descripcion
+                                        </small>
+
+                                    </label>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border rounded-3 mb-0">
+
+                            <div class="d-flex align-items-center gap-2">
+
+                                <i class="bi bi-info-circle-fill text-primary"></i>
+
+                                <span class="text-muted">
+                                    No existen plantillas de campaña
+                                    disponibles actualmente.
+                                </span>
+
                             </div>
 
                         </div>
-
-                    </div>
-
-
-                    <div class="row g-3">
-
-                        <!-- General -->
-                        <div class="col-md-4">
-
-                            <input asp-for="Plantilla"
-                                   type="radio"
-                                   class="btn-check plantilla-option"
-                                   value="General"
-                                   id="plantillaGeneral" />
-
-                            <label for="plantillaGeneral"
-                                   class="plantilla-card p-3 d-block">
-
-                                <div class="campana-icon mb-3">
-                                    <i class="bi bi-envelope-paper-fill"></i>
-                                </div>
-
-                                <div class="fw-bold">
-                                    General
-                                </div>
-
-                                <small class="text-muted">
-                                    Comunicaciones generales del Ministerio.
-                                </small>
-
-                            </label>
-
-                        </div>
-
-
-                        <!-- Informativa -->
-                        <div class="col-md-4">
-
-                            <input asp-for="Plantilla"
-                                   type="radio"
-                                   class="btn-check plantilla-option"
-                                   value="Informativa"
-                                   id="plantillaInformativa" />
-
-                            <label for="plantillaInformativa"
-                                   class="plantilla-card p-3 d-block">
-
-                                <div class="campana-icon mb-3">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </div>
-
-                                <div class="fw-bold">
-                                    Informativa
-                                </div>
-
-                                <small class="text-muted">
-                                    Noticias, avisos y comunicados.
-                                </small>
-
-                            </label>
-
-                        </div>
-
-
-                        <!-- Recordatorio -->
-                        <div class="col-md-4">
-
-                            <input asp-for="Plantilla"
-                                   type="radio"
-                                   class="btn-check plantilla-option"
-                                   value="Recordatorio"
-                                   id="plantillaRecordatorio" />
-
-                            <label for="plantillaRecordatorio"
-                                   class="plantilla-card p-3 d-block">
-
-                                <div class="campana-icon mb-3">
-                                    <i class="bi bi-bell-fill"></i>
-                                </div>
-
-                                <div class="fw-bold">
-                                    Recordatorio
-                                </div>
-
-                                <small class="text-muted">
-                                    Reuniones, actividades y fechas importantes.
-                                </small>
-
-                            </label>
-
-                        </div>
-
-                    </div>
+                    }
 
                 </div>
 
 
-                <!-- Destinatarios -->
+                <!-- ============================================= -->
+                <!-- DESTINATARIOS                                 -->
+                <!-- ============================================= -->
+
                 <div class="campana-section shadow-sm p-4">
 
                     <div class="d-flex align-items-start gap-3 mb-4">
@@ -330,7 +328,6 @@
                         </div>
 
                         <div>
-
                             <div class="campana-section-title">
                                 Destinatarios
                             </div>
@@ -339,7 +336,6 @@
                                 Seleccione todos los usuarios o genere la lista
                                 según rol y ministerio.
                             </div>
-
                         </div>
 
                     </div>
@@ -362,7 +358,6 @@
 
                                 <i class="bi bi-broadcast me-1"></i>
                                 Enviar a todos los usuarios activos
-
                             </label>
 
                         </div>
@@ -387,9 +382,7 @@
                                               me-2 text-primary"></i>
 
                                     Roles
-
                                 </h6>
-
 
                                 @if (roles.Any())
                                 {
@@ -407,7 +400,9 @@
                                                        value="@rol.Value"
                                                        class="form-check-input
                                                               destinatario-check
-                                                              rol-check mt-0" />
+                                                              rol-check
+                                                              mt-0"
+                                                       checked="@rol.Selected" />
 
                                                 <span>
 
@@ -445,9 +440,7 @@
                                               me-2 text-primary"></i>
 
                                     Ministerios
-
                                 </h6>
-
 
                                 @if (ministerios.Any())
                                 {
@@ -465,7 +458,9 @@
                                                        value="@ministerio.Value"
                                                        class="form-check-input
                                                               destinatario-check
-                                                              ministerio-check mt-0" />
+                                                              ministerio-check
+                                                              mt-0"
+                                                       checked="@ministerio.Selected" />
 
                                                 <span>
 
@@ -518,7 +513,6 @@
 
                                     Seleccione al menos un rol,
                                     ministerio o la opción "Todos".
-
                                 </small>
 
                             </div>
@@ -545,7 +539,8 @@
                         <div class="card-header
                                     bg-white
                                     border-0
-                                    pt-4 px-4">
+                                    pt-4
+                                    px-4">
 
                             <div class="d-flex align-items-center gap-2">
 
@@ -569,8 +564,8 @@
                             <div class="email-preview">
 
                                 <div id="previewHeader"
-                                     class="email-preview-header
-                                            plantilla-general">
+                                     class="email-preview-header"
+                                     style="background-color:@colorInicial;">
 
                                     <div class="small opacity-75 mb-1">
                                         Ministerio Gosén
@@ -580,7 +575,6 @@
                                         class="fw-bold mb-0">
 
                                         Título de la campaña
-
                                     </h5>
 
                                 </div>
@@ -612,7 +606,6 @@
 
                                         El contenido de la campaña
                                         aparecerá aquí.
-
                                     </div>
 
 
@@ -632,8 +625,13 @@
                     </div>
 
 
-                    <div class="alert alert-light
-                                border rounded-4 mt-3 mb-0">
+                    <!-- Información de privacidad -->
+                    <div class="alert
+                                alert-light
+                                border
+                                rounded-4
+                                mt-3
+                                mb-0">
 
                         <div class="d-flex gap-2">
 
@@ -642,9 +640,10 @@
                             <small class="text-muted">
 
                                 Cada persona recibirá el correo
-                                individualmente. Las direcciones de
-                                otros destinatarios no serán visibles.
+                                individualmente.
 
+                                Las direcciones de otros
+                                destinatarios no serán visibles.
                             </small>
 
                         </div>
@@ -658,30 +657,38 @@
         </div>
 
 
-        <!-- Acciones -->
-        <div class="d-flex flex-column
+        <!-- ===================================================== -->
+        <!-- ACCIONES                                              -->
+        <!-- ===================================================== -->
+
+        <div class="d-flex
+                    flex-column
                     flex-sm-row
                     justify-content-end
-                    gap-2 mt-4">
+                    gap-2
+                    mt-4">
 
             <a asp-controller="Campana"
                asp-action="Index"
-               class="btn btn-outline-secondary
-                      rounded-pill px-4">
+               class="btn
+                      btn-outline-secondary
+                      rounded-pill
+                      px-4">
 
                 Cancelar
-
             </a>
 
 
             <button type="submit"
                     id="btnEnviarCampana"
-                    class="btn btn-primary
-                           rounded-pill px-4">
+                    class="btn
+                           btn-primary
+                           rounded-pill
+                           px-4">
 
                 <i class="bi bi-send-fill me-2"></i>
-                Crear y enviar campaña
 
+                Crear y enviar campaña
             </button>
 
         </div>
@@ -689,3 +696,10 @@
     </form>
 
 </div>
+
+
+@section Scripts
+{
+    <script src="~/js/campana.js"
+            asp-append-version="true"></script>
+}

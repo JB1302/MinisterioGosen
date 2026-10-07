@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-    const form = document.getElementById("formCampana");
+    const form =
+        document.getElementById("formCampana");
 
     if (!form) {
         return;
@@ -27,54 +28,78 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("opcionTodos");
 
     const filtros =
-        document.getElementById("contenedorFiltrosDestinatarios");
+        document.getElementById(
+            "contenedorFiltrosDestinatarios"
+        );
 
     const destinatarios =
-        document.querySelectorAll(".destinatario-check");
-
-    const roles =
-        document.querySelectorAll(".rol-check");
-
-    const ministerios =
-        document.querySelectorAll(".ministerio-check");
+        document.querySelectorAll(
+            ".destinatario-check"
+        );
 
     const plantillas =
-        document.querySelectorAll(".plantilla-option");
+        document.querySelectorAll(
+            ".plantilla-option"
+        );
 
     const resumen =
-        document.getElementById("resumenDestinatarios");
+        document.getElementById(
+            "resumenDestinatarios"
+        );
 
     const mensajeValidacion =
-        document.getElementById("mensajeValidacion");
+        document.getElementById(
+            "mensajeValidacion"
+        );
 
     const textoValidacion =
-        document.getElementById("textoValidacion");
-
-
-    // Vista previa
-    const previewTitulo =
-        document.getElementById("previewTitulo");
-
-    const previewAsunto =
-        document.getElementById("previewAsunto");
-
-    const previewContenido =
-        document.getElementById("previewContenido");
-
-    const previewHeader =
-        document.getElementById("previewHeader");
-
-
-    // Contadores
-    const contadorTitulo =
-        document.getElementById("contadorTitulo");
-
-    const contadorAsunto =
-        document.getElementById("contadorAsunto");
+        document.getElementById(
+            "textoValidacion"
+        );
 
 
     // =========================================================
     // VISTA PREVIA
+    // =========================================================
+
+    const previewTitulo =
+        document.getElementById(
+            "previewTitulo"
+        );
+
+    const previewAsunto =
+        document.getElementById(
+            "previewAsunto"
+        );
+
+    const previewContenido =
+        document.getElementById(
+            "previewContenido"
+        );
+
+    const previewHeader =
+        document.getElementById(
+            "previewHeader"
+        );
+
+
+    // =========================================================
+    // CONTADORES
+    // =========================================================
+
+    const contadorTitulo =
+        document.getElementById(
+            "contadorTitulo"
+        );
+
+    const contadorAsunto =
+        document.getElementById(
+            "contadorAsunto"
+        );
+
+
+    // =========================================================
+    // ACTUALIZAR VISTA PREVIA
     // =========================================================
 
     function actualizarPreview() {
@@ -83,16 +108,21 @@ document.addEventListener("DOMContentLoaded", function () {
             titulo.value.trim() ||
             "Título de la campaña";
 
+
         previewAsunto.textContent =
             asunto.value.trim() ||
             "Asunto del correo";
 
+
         previewContenido.textContent =
             contenido.value.trim() ||
             "El contenido de la campaña aparecerá aquí.";
-
     }
 
+
+    // =========================================================
+    // CONTADORES
+    // =========================================================
 
     function actualizarContadores() {
 
@@ -101,7 +131,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         contadorAsunto.textContent =
             asunto.value.length;
-
     }
 
 
@@ -111,7 +140,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             actualizarPreview();
             actualizarContadores();
-
         }
     );
 
@@ -122,7 +150,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             actualizarPreview();
             actualizarContadores();
-
         }
     );
 
@@ -134,7 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // =========================================================
-    // PLANTILLAS
+    // PLANTILLAS DINÁMICAS
     // =========================================================
 
     function actualizarPlantilla() {
@@ -144,96 +171,86 @@ document.addEventListener("DOMContentLoaded", function () {
                 ".plantilla-option:checked"
             );
 
+
         if (!seleccionada) {
             return;
         }
 
 
-        previewHeader.classList.remove(
-            "plantilla-general",
-            "plantilla-informativa",
-            "plantilla-recordatorio"
-        );
+        /*
+         * El color viene directamente de PostgreSQL.
+         *
+         * Crear.cshtml genera:
+         *
+         * data-color="@plantilla.Color_Encabezado"
+         */
+
+        const color =
+            seleccionada.dataset.color;
 
 
-        switch (seleccionada.value) {
+        if (color) {
 
-            case "Informativa":
-
-                previewHeader.classList.add(
-                    "plantilla-informativa"
-                );
-
-                break;
-
-
-            case "Recordatorio":
-
-                previewHeader.classList.add(
-                    "plantilla-recordatorio"
-                );
-
-                break;
-
-
-            default:
-
-                previewHeader.classList.add(
-                    "plantilla-general"
-                );
-
-                break;
-
+            previewHeader.style.backgroundColor =
+                color;
         }
+        else {
 
+            /*
+             * Fallback únicamente por seguridad.
+             */
+            previewHeader.style.backgroundColor =
+                "#064442";
+        }
     }
 
 
-    plantillas.forEach(function (plantilla) {
+    plantillas.forEach(
+        function (plantilla) {
 
-        plantilla.addEventListener(
-            "change",
-            actualizarPlantilla
-        );
-
-    });
+            plantilla.addEventListener(
+                "change",
+                actualizarPlantilla
+            );
+        }
+    );
 
 
     // =========================================================
-    // MARCAR VISUALMENTE CHECKBOXES
+    // MARCAR VISUALMENTE DESTINATARIOS
     // =========================================================
 
     function actualizarClasesDestinatarios() {
 
-        destinatarios.forEach(function (checkbox) {
+        destinatarios.forEach(
+            function (checkbox) {
 
-            const contenedor =
-                checkbox.closest(
-                    ".destinatario-option"
+                const contenedor =
+                    checkbox.closest(
+                        ".destinatario-option"
+                    );
+
+
+                if (!contenedor) {
+                    return;
+                }
+
+
+                contenedor.classList.toggle(
+                    "seleccionado",
+                    checkbox.checked
                 );
-
-            if (!contenedor) {
-                return;
             }
+        );
 
 
-            contenedor.classList.toggle(
-                "seleccionado",
-                checkbox.checked
-            );
-
-        });
-
-
-        if (opcionTodos) {
+        if (opcionTodos && todos) {
 
             opcionTodos.classList.toggle(
                 "seleccionado",
                 todos.checked
             );
-
         }
-
     }
 
 
@@ -243,21 +260,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function actualizarDestinatarios() {
 
+        if (!todos || !filtros || !resumen) {
+            return;
+        }
+
+
         if (todos.checked) {
 
             filtros.classList.add(
                 "campana-filtros-deshabilitados"
             );
 
-            filtros.style.opacity = "0.45";
 
+            destinatarios.forEach(
+                function (checkbox) {
 
-            destinatarios.forEach(function (checkbox) {
+                    checkbox.checked = false;
 
-                checkbox.checked = false;
-                checkbox.disabled = true;
-
-            });
+                    checkbox.disabled = true;
+                }
+            );
 
 
             resumen.textContent =
@@ -274,14 +296,13 @@ document.addEventListener("DOMContentLoaded", function () {
             "campana-filtros-deshabilitados"
         );
 
-        filtros.style.opacity = "1";
 
+        destinatarios.forEach(
+            function (checkbox) {
 
-        destinatarios.forEach(function (checkbox) {
-
-            checkbox.disabled = false;
-
-        });
+                checkbox.disabled = false;
+            }
+        );
 
 
         const rolesSeleccionados =
@@ -324,7 +345,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         : " roles seleccionados"
                 )
             );
-
         }
 
 
@@ -338,7 +358,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         : " ministerios seleccionados"
                 )
             );
-
         }
 
 
@@ -349,24 +368,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
         actualizarClasesDestinatarios();
-
     }
 
 
-    todos.addEventListener(
-        "change",
-        actualizarDestinatarios
-    );
+    if (todos) {
 
-
-    destinatarios.forEach(function (checkbox) {
-
-        checkbox.addEventListener(
+        todos.addEventListener(
             "change",
             actualizarDestinatarios
         );
+    }
 
-    });
+
+    destinatarios.forEach(
+        function (checkbox) {
+
+            checkbox.addEventListener(
+                "change",
+                actualizarDestinatarios
+            );
+        }
+    );
 
 
     // =========================================================
@@ -391,7 +413,6 @@ document.addEventListener("DOMContentLoaded", function () {
         contenido.classList.remove(
             "is-invalid"
         );
-
     }
 
 
@@ -399,6 +420,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         textoValidacion.textContent =
             mensaje;
+
 
         mensajeValidacion.classList.remove(
             "d-none"
@@ -409,7 +431,6 @@ document.addEventListener("DOMContentLoaded", function () {
             behavior: "smooth",
             block: "center"
         });
-
     }
 
 
@@ -420,67 +441,85 @@ document.addEventListener("DOMContentLoaded", function () {
             limpiarValidacion();
 
 
-            // Título
+            // =================================================
+            // TÍTULO
+            // =================================================
+
             if (!titulo.value.trim()) {
 
                 event.preventDefault();
+
 
                 titulo.classList.add(
                     "is-invalid"
                 );
 
+
                 mostrarError(
                     "Debe ingresar el título de la campaña."
                 );
 
+
                 titulo.focus();
 
                 return;
-
             }
 
 
-            // Asunto
+            // =================================================
+            // ASUNTO
+            // =================================================
+
             if (!asunto.value.trim()) {
 
                 event.preventDefault();
+
 
                 asunto.classList.add(
                     "is-invalid"
                 );
 
+
                 mostrarError(
                     "Debe ingresar el asunto del correo."
                 );
 
+
                 asunto.focus();
 
                 return;
-
             }
 
 
-            // Contenido
+            // =================================================
+            // CONTENIDO
+            // =================================================
+
             if (!contenido.value.trim()) {
 
                 event.preventDefault();
+
 
                 contenido.classList.add(
                     "is-invalid"
                 );
 
+
                 mostrarError(
                     "Debe ingresar el contenido de la campaña."
                 );
 
+
                 contenido.focus();
 
                 return;
-
             }
 
 
-            // Plantilla
+            // =================================================
+            // PLANTILLA
+            // =================================================
+
             const plantillaSeleccionada =
                 document.querySelector(
                     ".plantilla-option:checked"
@@ -491,16 +530,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 event.preventDefault();
 
+
                 mostrarError(
                     "Debe seleccionar una plantilla para la campaña."
                 );
 
-                return;
 
+                return;
             }
 
 
-            // Destinatarios
+            // =================================================
+            // DESTINATARIOS
+            // =================================================
+
             const algunoSeleccionado =
                 document.querySelectorAll(
                     ".destinatario-check:checked"
@@ -514,14 +557,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 event.preventDefault();
 
+
                 mostrarError(
                     'Debe seleccionar al menos un rol, un ministerio o la opción "Todos".'
                 );
 
+
                 return;
-
             }
-
         }
     );
 
@@ -531,8 +574,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // =========================================================
 
     actualizarPreview();
+
     actualizarContadores();
+
     actualizarPlantilla();
+
     actualizarDestinatarios();
 
 });
