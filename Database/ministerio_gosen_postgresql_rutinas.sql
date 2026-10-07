@@ -1864,6 +1864,91 @@ BEGIN
 END;
 $$;
 
+-- =============================================================
+-- ACTUALIZAR ESTADO GENERAL DE LA CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE PROCEDURE spActualizarEstadoCampana(
+    p_id_campana integer,
+    p_estado varchar(20)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF p_estado NOT IN (
+        'Borrador',
+        'Procesando',
+        'Enviada',
+        'Parcial',
+        'Error'
+    )
+    THEN
+        RAISE EXCEPTION
+            'Estado de campaña no válido.';
+    END IF;
+
+
+    UPDATE campana
+
+    SET
+        estado = p_estado,
+
+        fecha_envio =
+            CASE
+                WHEN p_estado IN (
+                    'Enviada',
+                    'Parcial',
+                    'Error'
+                )
+                THEN CURRENT_TIMESTAMP
+
+                ELSE fecha_envio
+            END
+
+    WHERE id_campana = p_id_campana;
+
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'No se encontró la campaña indicada.';
+    END IF;
+
+END;
+$$;
+
+
+-- =============================================================
+-- OBTENER DESTINATARIOS PENDIENTES
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarDestinatariosPendientesCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana_destinatario bigint,
+    id_usuario integer,
+    nombre_destinatario varchar(100),
+    correo_destinatario varchar(100)
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cd.id_campana_destinatario,
+        cd.id_usuario,
+        cd.nombre_destinatario,
+        cd.correo_destinatario
+
+    FROM campana_destinatario cd
+
+    WHERE cd.id_campana = p_id_campana
+      AND cd.estado_envio = 'Pendiente'
+
+    ORDER BY
+        cd.nombre_destinatario,
+        cd.id_campana_destinatario;
+$$;
+
 
 -- Permite ejecutar nuevamente el archivo de rutinas
 -- sin que falle porque el trigger ya existe.
