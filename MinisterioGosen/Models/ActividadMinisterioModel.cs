@@ -1,34 +1,31 @@
-﻿namespace MinisterioGosen.Models
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace MinisterioGosen.Models
 {
-    public class CampanaHistorialModel
+    public class ActividadMinisterioModel
     {
-        public int Id_Campana { get; set; }
+        [Key]
+        public int Id_Minis_Actividad { get; set; }
 
-        public string Titulo { get; set; } =
-            string.Empty;
+        [Required(ErrorMessage = "Debe seleccionar una actividad")]
+        public int Id_Actividad { get; set; }
 
-        public string Asunto { get; set; } =
-            string.Empty;
+        [Required(ErrorMessage = "Debe seleccionar un ministerio")]
+        public int Id_Ministerio { get; set; }
 
-        public string Plantilla { get; set; } =
-            string.Empty;
+        [DataType(DataType.Date)]
+        public DateTime? Fecha { get; set; }
 
-        public string Estado { get; set; } =
-            string.Empty;
+        [StringLength(
+            200,
+            ErrorMessage = "La observación no puede superar los 200 caracteres"
+        )]
+        public string? Observacion { get; set; }
 
-        public DateTime Fecha_Creacion { get; set; }
+        // Campos auxiliares utilizados para mostrar en las vistas
+        public string? NombreActividad { get; set; }
 
-        public DateTime? Fecha_Envio { get; set; }
-
-        public int Id_Usuario_Creador { get; set; }
-
-        public string Nombre_Creador { get; set; } =
-            string.Empty;
-
-        public long Total_Destinatarios { get; set; }
-
-        public long Total_Enviados { get; set; }
-
-        public long Total_Errores { get; set; }
+        public string? NombreMinisterio { get; set; }
     }
 }
