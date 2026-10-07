@@ -1501,4 +1501,211 @@ AS $$
     ORDER BY m.descripcion_ministerio, u.nombre;
 $$;
 
+CREATE OR REPLACE FUNCTION spCrearListaDistribucion(
+    p_ids_roles integer[] DEFAULT ARRAY[]::integer[],
+    p_ids_ministerios integer[] DEFAULT ARRAY[]::integer[],
+    p_todos boolean DEFAULT false
+)
+RETURNS TABLE (
+    id_usuario integer,
+    nombre varchar(100),
+    correo varchar(100),
+    id_rol integer,
+    rol varchar(20)
+)
+LANGUAGE sql
+AS $$
+    SELECT DISTINCT
+        u.id_usuario,
+        u.nombre,
+        u.correo,
+        u.id_rol,
+        r.descripcion
+    FROM usuario u
+    INNER JOIN rol r
+        ON r.id_rol = u.id_rol
+
+    WHERE u.estado = 'A'
+
+      AND (
+            p_todos = true
+
+            OR cardinality(p_ids_roles) = 0
+
+            OR u.id_rol = ANY(p_ids_roles)
+      )
+
+      AND (
+            p_todos = true
+
+            OR cardinality(p_ids_ministerios) = 0
+
+            OR EXISTS (
+                SELECT 1
+                FROM usuarios_ministerio um
+                WHERE um.id_usuario = u.id_usuario
+                  AND um.id_ministerio = ANY(p_ids_ministerios)
+                  AND um.fecha_salida IS NULL
+                  AND um.estado = 'Activo'
+            )
+      )
+
+    ORDER BY u.nombre;
+$$;
+
+CREATE OR REPLACE FUNCTION spCrearCampana(
+    p_titulo varchar(150),
+    p_asunto varchar(200),
+    p_contenido text,
+    p_plantilla varchar(30),
+    p_id_usuario_creador integer
+)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_id_campana integer;
+BEGIN
+
+    INSERT INTO campana (
+        titulo,
+        asunto,
+        contenido,
+        plantilla,
+        estado,
+        fecha_creacion,
+        id_usuario_creador
+    )
+    VALUES (
+        p_titulo,
+        p_asunto,
+        p_contenido,
+        p_plantilla,
+        'Borrador',
+        CURRENT_TIMESTAMP,
+        p_id_usuario_creador
+    )
+    RETURNING id_campana
+    INTO v_id_campana;
+
+    RETURN v_id_campana;
+
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE spCrearDestinatariosCampana(
+    p_id_campana integer,
+    p_ids_roles integer[],
+    p_ids_ministerios integer[],
+    p_todos boolean
+)
+LANGUAGE sql
+AS $$
+
+    INSERT INTO campana_destinatario (
+        id_campana,
+        id_usuario,
+        nombre_destinatario,
+        correo_destinatario,
+        estado_envio
+    )
+
+    SELECT
+        p_id_campana,
+        d.id_usuario,
+        d.nombre,
+        d.correo,
+        'Pendiente'
+
+    FROM spCrearListaDistribucion(
+        p_ids_roles,
+        p_ids_ministerios,
+        p_todos
+    ) d
+
+    ON CONFLICT (id_campana, correo_destinatario)
+    DO NOTHING;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE spActualizarEstadoEnvioCampana(
+    p_id_campana_destinatario bigint,
+    p_estado varchar(20),
+    p_detalle_error text DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    UPDATE campana_destinatario
+
+    SET
+        estado_envio = p_estado,
+
+        fecha_envio =
+            CASE
+                WHEN p_estado = 'Enviado'
+                THEN CURRENT_TIMESTAMP
+                ELSE NULL
+            END,
+
+        detalle_error = p_detalle_error
+
+    WHERE id_campana_destinatario =
+          p_id_campana_destinatario;
+
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION fnLogEnvioCampana()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF NEW.estado_envio IS DISTINCT FROM OLD.estado_envio
+       AND NEW.estado_envio IN ('Enviado', 'Error')
+    THEN
+
+        INSERT INTO campana_envio_log (
+            id_campana,
+            id_usuario,
+            nombre_destinatario,
+            correo_destinatario,
+            asunto,
+            contenido,
+            estado,
+            fecha,
+            detalle_error
+        )
+
+        SELECT
+            NEW.id_campana,
+            NEW.id_usuario,
+            NEW.nombre_destinatario,
+            NEW.correo_destinatario,
+            c.asunto,
+            c.contenido,
+            NEW.estado_envio,
+            CURRENT_TIMESTAMP,
+            NEW.detalle_error
+
+        FROM campana c
+        WHERE c.id_campana = NEW.id_campana;
+
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$;
+
+CREATE TRIGGER trgLogEnvioCampana
+AFTER UPDATE OF estado_envio
+ON campana_destinatario
+
+FOR EACH ROW
+
+EXECUTE FUNCTION fnLogEnvioCampana();
+
 COMMIT;
