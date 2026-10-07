@@ -1,19 +1,28 @@
 ﻿namespace MinisterioGosen.Models
 {
-    public class CampanaCrearModel
+    public class UsuariosMinisterioModel
     {
-        public string Titulo { get; set; } = string.Empty;
+        public int Id_Usuario_Ministerio { get; set; }
 
-        public string Asunto { get; set; } = string.Empty;
+        public int Id_Ministerio { get; set; }
 
-        public string Contenido { get; set; } = string.Empty;
+        public int Id_Usuario { get; set; }
 
-        public string Plantilla { get; set; } = "General";
+        public DateTime? Fecha_Ingreso { get; set; }
 
-        public List<int> IdsRoles { get; set; } = [];
+        public DateTime? Fecha_Salida { get; set; }
 
-        public List<int> IdsMinisterios { get; set; } = [];
+        public string? Estado { get; set; } = "Activo";
 
-        public bool Todos { get; set; }
+        public string? Observacion { get; set; }
+
+
+        public string? Nombre { get; set; }
+
+        public string? Correo { get; set; }
+
+        public string? Rol { get; set; }
+
+        public string? Descripcion_Ministerio { get; set; }
     }
 }

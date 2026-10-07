@@ -1501,6 +1501,11 @@ AS $$
     ORDER BY m.descripcion_ministerio, u.nombre;
 $$;
 
+
+-- =============================================================
+-- CAMPAÑAS
+-- =============================================================
+
 CREATE OR REPLACE FUNCTION spCrearListaDistribucion(
     p_ids_roles integer[] DEFAULT ARRAY[]::integer[],
     p_ids_ministerios integer[] DEFAULT ARRAY[]::integer[],
@@ -1513,45 +1518,80 @@ RETURNS TABLE (
     id_rol integer,
     rol varchar(20)
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 AS $$
+BEGIN
+
+    -- Evita que una selección vacía sea interpretada como "todos"
+    IF COALESCE(p_todos, false) = false
+       AND COALESCE(cardinality(p_ids_roles), 0) = 0
+       AND COALESCE(cardinality(p_ids_ministerios), 0) = 0
+    THEN
+        RAISE EXCEPTION
+            'Debe seleccionar al menos un rol, un ministerio o la opción Todos.';
+    END IF;
+
+    RETURN QUERY
+
     SELECT DISTINCT
         u.id_usuario,
         u.nombre,
         u.correo,
         u.id_rol,
-        r.descripcion
+        r.descripcion AS rol
+
     FROM usuario u
+
     INNER JOIN rol r
         ON r.id_rol = u.id_rol
 
     WHERE u.estado = 'A'
 
+      -- Filtro por rol
       AND (
-            p_todos = true
+            COALESCE(p_todos, false) = true
 
-            OR cardinality(p_ids_roles) = 0
+            OR COALESCE(cardinality(p_ids_roles), 0) = 0
 
-            OR u.id_rol = ANY(p_ids_roles)
+            OR u.id_rol = ANY(
+                COALESCE(
+                    p_ids_roles,
+                    ARRAY[]::integer[]
+                )
+            )
       )
 
+      -- Filtro por ministerio
       AND (
-            p_todos = true
+            COALESCE(p_todos, false) = true
 
-            OR cardinality(p_ids_ministerios) = 0
+            OR COALESCE(cardinality(p_ids_ministerios), 0) = 0
 
             OR EXISTS (
                 SELECT 1
+
                 FROM usuarios_ministerio um
+
                 WHERE um.id_usuario = u.id_usuario
-                  AND um.id_ministerio = ANY(p_ids_ministerios)
+
+                  AND um.id_ministerio = ANY(
+                      COALESCE(
+                          p_ids_ministerios,
+                          ARRAY[]::integer[]
+                      )
+                  )
+
                   AND um.fecha_salida IS NULL
+
                   AND um.estado = 'Activo'
             )
       )
 
     ORDER BY u.nombre;
+
+END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION spCrearCampana(
     p_titulo varchar(150),
@@ -1593,6 +1633,7 @@ BEGIN
 END;
 $$;
 
+
 CREATE OR REPLACE PROCEDURE spCrearDestinatariosCampana(
     p_id_campana integer,
     p_ids_roles integer[],
@@ -1623,10 +1664,14 @@ AS $$
         p_todos
     ) d
 
-    ON CONFLICT (id_campana, correo_destinatario)
+    ON CONFLICT (
+        id_campana,
+        correo_destinatario
+    )
     DO NOTHING;
 
 $$;
+
 
 CREATE OR REPLACE PROCEDURE spActualizarEstadoEnvioCampana(
     p_id_campana_destinatario bigint,
@@ -1637,6 +1682,13 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
 
+    -- Este SP solamente debe utilizarse después
+    -- de intentar enviar el correo.
+    IF p_estado NOT IN ('Enviado', 'Error') THEN
+        RAISE EXCEPTION
+            'El estado del envío debe ser Enviado o Error.';
+    END IF;
+
     UPDATE campana_destinatario
 
     SET
@@ -1645,17 +1697,28 @@ BEGIN
         fecha_envio =
             CASE
                 WHEN p_estado = 'Enviado'
-                THEN CURRENT_TIMESTAMP
+                    THEN CURRENT_TIMESTAMP
                 ELSE NULL
             END,
 
-        detalle_error = p_detalle_error
+        detalle_error =
+            CASE
+                WHEN p_estado = 'Error'
+                    THEN p_detalle_error
+                ELSE NULL
+            END
 
     WHERE id_campana_destinatario =
           p_id_campana_destinatario;
 
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'No se encontró el destinatario de la campaña.';
+    END IF;
+
 END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION fnLogEnvioCampana()
 RETURNS trigger
@@ -1691,6 +1754,7 @@ BEGIN
             NEW.detalle_error
 
         FROM campana c
+
         WHERE c.id_campana = NEW.id_campana;
 
     END IF;
@@ -1700,12 +1764,17 @@ BEGIN
 END;
 $$;
 
+
+-- Permite ejecutar nuevamente el archivo de rutinas
+-- sin que falle porque el trigger ya existe.
+DROP TRIGGER IF EXISTS trgLogEnvioCampana
+ON campana_destinatario;
+
+
 CREATE TRIGGER trgLogEnvioCampana
 AFTER UPDATE OF estado_envio
 ON campana_destinatario
-
 FOR EACH ROW
-
 EXECUTE FUNCTION fnLogEnvioCampana();
 
 COMMIT;
