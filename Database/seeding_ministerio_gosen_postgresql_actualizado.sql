@@ -2,6 +2,15 @@
 -- SEEDING POSTGRESQL - MINISTERIO GOSEN
 -- Actualizado para ministerio_gosen_postgresql_base.sql
 --
+-- IMPORTANTE:
+--   * Ejecutar conectado a la base: ministerio_gosen
+--   * Conserva los registros existentes de usuario y rol.
+--   * Limpia y repuebla las tablas operativas/demostrativas.
+--   * Incluye el rol Miembro (3) y es compatible con el trigger
+--     fn_sincronizar_rol_miembro / trg_sincronizar_rol_miembro.
+--   * Los usuarios demo se crean como Usuario (2). Al recibir una membresía
+--     activa, el trigger los convierte automáticamente en Miembro (3).
+--   * Los Admin (1) nunca se modifican por la sincronización de membresía.
 --
 -- Credenciales de usuarios nuevos del seeding:
 --   Administrador: ministeriogosen@gmail.com / admin123
@@ -20,7 +29,9 @@ BEGIN
     FOREACH v_tabla IN ARRAY ARRAY[
         'rol', 'usuario', 'error', 'actividad_usuario',
         'actividades_ministerio', 'usuarios_ministerio', 'citas',
-        'actividad', 'tipo_actividad', 'ministerio', 'chat_bot_opciones'
+        'actividad', 'tipo_actividad', 'ministerio', 'chat_bot_opciones',
+        'campana_plantilla', 'campana', 'campana_destinatario',
+        'campana_envio_log'
     ]
     LOOP
         IF to_regclass('public.' || v_tabla) IS NULL THEN
@@ -717,30 +728,11 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 14. AJUSTAR SECUENCIAS
--- ============================================================================
-SELECT setval(pg_get_serial_sequence('usuario','id_usuario'), COALESCE((SELECT MAX(id_usuario) FROM usuario), 1), true);
-SELECT setval(pg_get_serial_sequence('ministerio','id_ministerio'), COALESCE((SELECT MAX(id_ministerio) FROM ministerio), 1), true);
-SELECT setval(pg_get_serial_sequence('tipo_actividad','id_tipo_actividad'), COALESCE((SELECT MAX(id_tipo_actividad) FROM tipo_actividad), 1), true);
-SELECT setval(pg_get_serial_sequence('actividad','id_actividad'), COALESCE((SELECT MAX(id_actividad) FROM actividad), 1), true);
-SELECT setval(pg_get_serial_sequence('actividad_usuario','id_actividad_usuario'), COALESCE((SELECT MAX(id_actividad_usuario) FROM actividad_usuario), 1), true);
-SELECT setval(pg_get_serial_sequence('actividades_ministerio','id_minis_actividad'), COALESCE((SELECT MAX(id_minis_actividad) FROM actividades_ministerio), 1), true);
-SELECT setval(pg_get_serial_sequence('usuarios_ministerio','id_usuario_ministerio'), COALESCE((SELECT MAX(id_usuario_ministerio) FROM usuarios_ministerio), 1), true);
-SELECT setval(pg_get_serial_sequence('citas','id_cita'), COALESCE((SELECT MAX(id_cita) FROM citas), 1), true);
-SELECT setval(pg_get_serial_sequence('error','consecutivo'), COALESCE((SELECT MAX(consecutivo) FROM error), 1), true);
-SELECT setval(pg_get_serial_sequence('chat_bot_opciones','id_opcion'), COALESCE((SELECT MAX(id_opcion) FROM chat_bot_opciones), 1), true);
-
-COMMIT;
-
--- ============================================================================
--- 15. campania_plantilla
--- ============================================================================
-
--- ============================================================================
 -- 14. PLANTILLAS DE CAMPAÑA
 -- ============================================================================
 
-INSERT INTO campana_plantilla (
+INSERT INTO campana_plantilla
+(
     codigo,
     nombre,
     descripcion,
@@ -781,6 +773,23 @@ SET
     color_encabezado = EXCLUDED.color_encabezado,
     activo = EXCLUDED.activo;
 
+
+-- ============================================================================
+-- 15. AJUSTAR SECUENCIAS
+-- ============================================================================
+SELECT setval(pg_get_serial_sequence('usuario','id_usuario'), COALESCE((SELECT MAX(id_usuario) FROM usuario), 1), true);
+SELECT setval(pg_get_serial_sequence('ministerio','id_ministerio'), COALESCE((SELECT MAX(id_ministerio) FROM ministerio), 1), true);
+SELECT setval(pg_get_serial_sequence('tipo_actividad','id_tipo_actividad'), COALESCE((SELECT MAX(id_tipo_actividad) FROM tipo_actividad), 1), true);
+SELECT setval(pg_get_serial_sequence('actividad','id_actividad'), COALESCE((SELECT MAX(id_actividad) FROM actividad), 1), true);
+SELECT setval(pg_get_serial_sequence('actividad_usuario','id_actividad_usuario'), COALESCE((SELECT MAX(id_actividad_usuario) FROM actividad_usuario), 1), true);
+SELECT setval(pg_get_serial_sequence('actividades_ministerio','id_minis_actividad'), COALESCE((SELECT MAX(id_minis_actividad) FROM actividades_ministerio), 1), true);
+SELECT setval(pg_get_serial_sequence('usuarios_ministerio','id_usuario_ministerio'), COALESCE((SELECT MAX(id_usuario_ministerio) FROM usuarios_ministerio), 1), true);
+SELECT setval(pg_get_serial_sequence('citas','id_cita'), COALESCE((SELECT MAX(id_cita) FROM citas), 1), true);
+SELECT setval(pg_get_serial_sequence('error','consecutivo'), COALESCE((SELECT MAX(consecutivo) FROM error), 1), true);
+SELECT setval(pg_get_serial_sequence('chat_bot_opciones','id_opcion'), COALESCE((SELECT MAX(id_opcion) FROM chat_bot_opciones), 1), true);
+
+COMMIT;
+
 -- ============================================================================
 -- 16. VALIDACION RAPIDA
 -- ============================================================================
@@ -795,6 +804,10 @@ UNION ALL SELECT 'usuarios_ministerio', COUNT(*) FROM usuarios_ministerio
 UNION ALL SELECT 'citas', COUNT(*) FROM citas
 UNION ALL SELECT 'error', COUNT(*) FROM error
 UNION ALL SELECT 'chat_bot_opciones', COUNT(*) FROM chat_bot_opciones
+UNION ALL SELECT 'campana_plantilla', COUNT(*) FROM campana_plantilla
+UNION ALL SELECT 'campana', COUNT(*) FROM campana
+UNION ALL SELECT 'campana_destinatario', COUNT(*) FROM campana_destinatario
+UNION ALL SELECT 'campana_envio_log', COUNT(*) FROM campana_envio_log
 ORDER BY tabla;
 
 SELECT estado, COUNT(*) AS total

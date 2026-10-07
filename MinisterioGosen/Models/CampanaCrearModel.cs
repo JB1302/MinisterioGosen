@@ -8,7 +8,7 @@
 
         public string Contenido { get; set; } = string.Empty;
 
-        public string Plantilla { get; set; } = "General";
+        public string Plantilla { get; set; } = string.Empty;
 
         public List<int> IdsRoles { get; set; } = [];
 

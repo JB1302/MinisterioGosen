@@ -56,23 +56,70 @@ namespace MinisterioGosen.Controllers
 
             CargarCatalogos();
 
-            return View(new CampanaCrearModel());
+            var plantillas =
+                ViewBag.Plantillas
+                as List<CampanaPlantillaModel>
+                ?? new List<CampanaPlantillaModel>();
+
+
+            var model =
+                new CampanaCrearModel();
+
+
+            /*
+             * Seleccionamos dinámicamente la primera
+             * plantilla activa devuelta por la API.
+             */
+            if (plantillas.Count > 0)
+            {
+                model.Plantilla =
+                    plantillas[0].Codigo;
+            }
+
+
+            return View(model);
         }
 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Crear(CampanaCrearModel model)
-        {
-            if (!EsAdmin())
-            {
-                return RedirectToAction(
-                    "Error",
-                    "Home",
-                    new { statusCode = 403 }
-                );
-            }
+[HttpGet]
+public IActionResult Crear()
+{
+    if (!EsAdmin())
+    {
+        return RedirectToAction(
+            "Error",
+            "Home",
+            new { statusCode = 403 }
+        );
+    }
 
+    CargarCatalogos();
+
+    var plantillas =
+        ViewBag.Plantillas
+        as List<CampanaPlantillaModel>
+        ?? new List<CampanaPlantillaModel>();
+
+
+    var model =
+        new CampanaCrearModel();
+
+
+    /*
+     * Seleccionamos dinámicamente la primera
+     * plantilla activa devuelta por la API.
+     */
+    if (plantillas.Count > 0)
+    {
+        model.Plantilla =
+            plantillas[0].Codigo;
+    }
+
+
+    return View(model);
+}
 
             // =====================================================
             // VALIDACIONES

@@ -1640,6 +1640,72 @@ DECLARE
     v_id_campana integer;
 BEGIN
 
+    -- =========================================================
+    -- VALIDACIONES
+    -- =========================================================
+
+    IF p_titulo IS NULL
+       OR btrim(p_titulo) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el título de la campaña.';
+    END IF;
+
+
+    IF p_asunto IS NULL
+       OR btrim(p_asunto) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el asunto de la campaña.';
+    END IF;
+
+
+    IF p_contenido IS NULL
+       OR btrim(p_contenido) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el contenido de la campaña.';
+    END IF;
+
+
+    IF p_plantilla IS NULL
+       OR btrim(p_plantilla) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe seleccionar una plantilla.';
+    END IF;
+
+
+    -- La plantilla debe existir y estar activa
+    IF NOT EXISTS (
+        SELECT 1
+        FROM campana_plantilla cp
+        WHERE cp.codigo = p_plantilla
+          AND cp.activo = true
+    )
+    THEN
+        RAISE EXCEPTION
+            'La plantilla seleccionada no existe o está inactiva.';
+    END IF;
+
+
+    -- El creador debe existir y estar activo
+    IF NOT EXISTS (
+        SELECT 1
+        FROM usuario u
+        WHERE u.id_usuario = p_id_usuario_creador
+          AND u.estado = 'A'
+    )
+    THEN
+        RAISE EXCEPTION
+            'El usuario creador no existe o está inactivo.';
+    END IF;
+
+
+    -- =========================================================
+    -- CREAR CAMPAÑA
+    -- =========================================================
+
     INSERT INTO campana (
         titulo,
         asunto,
@@ -1650,8 +1716,8 @@ BEGIN
         id_usuario_creador
     )
     VALUES (
-        p_titulo,
-        p_asunto,
+        btrim(p_titulo),
+        btrim(p_asunto),
         p_contenido,
         p_plantilla,
         'Borrador',
@@ -1660,6 +1726,7 @@ BEGIN
     )
     RETURNING id_campana
     INTO v_id_campana;
+
 
     RETURN v_id_campana;
 
