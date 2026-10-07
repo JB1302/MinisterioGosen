@@ -1,9 +1,9 @@
-﻿using System.Data;
-using Dapper;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosen.Models;
 using MinisterioGosenAPI.Models;
+using Npgsql;
+using System.Data;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -14,7 +14,7 @@ namespace MinisterioGosenAPI.Controllers
 		[HttpGet("ListarActividadMinisterioAPI")]
 		public IActionResult ListarActividadMinisterioAPI(int? idActividad = null, int? idMinisterio = null)
 		{
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 
 			if (idActividad.HasValue)
@@ -23,26 +23,29 @@ namespace MinisterioGosenAPI.Controllers
 			if (idMinisterio.HasValue)
 				parameters.Add("@Id_Ministerio", idMinisterio.Value);
 
-			var response = context.Query<ActividadMinisterioModel>(
-				"spListarActividadMinisterio",
-				parameters,
-				commandType: CommandType.StoredProcedure
+            var response = context.Query<ActividadMinisterioModel>(
+				@"SELECT * FROM spListarActividadMinisterio(
+					  @Id_Ministerio,
+					  @Id_Actividad)",
+				new
+				{
+					Id_Ministerio = idMinisterio,
+					Id_Actividad = idActividad
+				}
 			).ToList();
 
-			return Ok(response);
+            return Ok(response);
 		}
 
 		[HttpGet("ObtenerActividadMinisterioAPI")]
 		public IActionResult ObtenerActividadMinisterioAPI(int id)
 		{
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Minis_Actividad", id);
 
 			var response = context.QueryFirstOrDefault<ActividadMinisterioModel>(
-				"spObtenerActividadMinisterio",
-				parameters
-			);
+                "SELECT * FROM spObtenerActividadMinisterio(@Id_Minis_Actividad)", parameters);
 
 			if (response != null)
 				return Ok(response);
@@ -59,20 +62,22 @@ namespace MinisterioGosenAPI.Controllers
 			if (model.Id_Actividad <= 0 || model.Id_Ministerio <= 0)
 				return BadRequest(new { Success = false, Message = "Actividad y Ministerio son obligatorios" });
 
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+			using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 			var parameters = new DynamicParameters();
 			parameters.Add("@Id_Actividad", model.Id_Actividad);
 			parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Observacion", model.Observacion);
+            parameters.Add("@Fecha", model.Fecha, DbType.Date);
+            parameters.Add("@Observacion", model.Observacion);
 
-			var idActividadMinisterio = context.QuerySingle<int>(
-				"spCrearActividadesMinisterio",
-				parameters,
-				commandType: CommandType.StoredProcedure
-			);
+            var idActividadMinisterio =
+                context.QuerySingle<int>(
+                    @"SELECT spCrearActividadesMinisterio(
+						@Id_Actividad,
+						@Id_Ministerio,
+						@Fecha,
+						@Observacion)",parameters);
 
-			if (idActividadMinisterio > 0)
+            if (idActividadMinisterio > 0)
 			{
 				return Ok(new
 				{
@@ -86,7 +91,7 @@ namespace MinisterioGosenAPI.Controllers
 		}
 
 		[HttpPut("ActualizarActividadMinisterioAPI")]
-		public IActionResult ActualizarActividadMinisterioAPI([FromBody] ActividadMinisterioModel model)
+		public async Task<IActionResult> ActualizarActividadMinisterioAPI([FromBody] ActividadMinisterioModel model)
 		{
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState);
@@ -94,27 +99,50 @@ namespace MinisterioGosenAPI.Controllers
 			if (model.Id_Minis_Actividad <= 0)
 				return BadRequest(new { Success = false, Message = "El identificador de la actividad ministerial es obligatorio" });
 
-			using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
-			var parameters = new DynamicParameters();
-			parameters.Add("@Id_Minis_Actividad", model.Id_Minis_Actividad);
-			parameters.Add("@Id_Actividad", model.Id_Actividad);
-			parameters.Add("@Id_Ministerio", model.Id_Ministerio);
-			parameters.Add("@Fecha", model.Fecha);
-			parameters.Add("@Observacion", model.Observacion);
+			await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-			var response = context.Execute("spActualizarActividadesMinisterio", parameters);
+			try
+			{
+				var parameters = new DynamicParameters();
+				parameters.Add("@Id_Minis_Actividad", model.Id_Minis_Actividad);
+				parameters.Add("@Id_Actividad", model.Id_Actividad);
+				parameters.Add("@Id_Ministerio", model.Id_Ministerio);
+                parameters.Add("@Fecha", model.Fecha, DbType.Date);
+                parameters.Add("@Observacion", model.Observacion);
 
-			if (response > 0)
-				return Ok(new { Success = true, Message = "Actividad ministerial actualizada correctamente" });
+				await context.ExecuteAsync(
+					@"CALL spActualizarActividadesMinisterio(
+						@Id_Minis_Actividad,
+						@Id_Actividad,
+						@Id_Ministerio,
+						@Fecha,
+						@Observacion)", parameters);
 
-			return BadRequest(new { Success = false, Message = "No se ha actualizado la actividad ministerial" });
+				return Ok(new
+				{
+					Success = true,
+					Message = "Actividad ministerial actualizada correctamente"
+				});
+			}
+			catch (PostgresException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.MessageText });
+			}
+			catch (NpgsqlException ex)
+			{
+				return BadRequest(new { Success = false, Message = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "Error al actualizar la actividad ministerial: " + ex.Message });
+			}
 		}
 
 
         [HttpDelete("EliminarActividadMinisterioAPI")]
         public IActionResult EliminarActividadMinisterioAPI(int id)
         {
-            using var context = new SqlConnection(
+            using var context = new NpgsqlConnection(
                 _config["ConnectionStrings:DefaultConnection"]
             );
 
@@ -122,10 +150,7 @@ namespace MinisterioGosenAPI.Controllers
             parameters.Add("@Id_Minis_Actividad", id);
 
             var filasAfectadas = context.QuerySingle<int>(
-                "spEliminarActividadMinisterio",
-                parameters,
-                commandType: CommandType.StoredProcedure
-            );
+                 "SELECT spEliminarActividadMinisterio(@Id_Minis_Actividad)", parameters);
 
             if (filasAfectadas > 0)
             {

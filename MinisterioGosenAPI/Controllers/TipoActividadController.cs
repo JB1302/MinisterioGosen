@@ -1,7 +1,7 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using MinisterioGosenAPI.Models;
+using Npgsql;
 
 namespace MinisterioGosenAPI.Controllers
 {
@@ -12,9 +12,9 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ListarTiposActividadAPI")]
         public IActionResult ListarTiposActividadAPI()
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var response = context.Query<TipoActividadModel>("spListarTiposActividad").ToList();
+            var response = context.Query<TipoActividadModel>("SELECT * FROM spListarTiposActividad()").ToList();
 
             return Ok(response);
         }
@@ -22,12 +22,12 @@ namespace MinisterioGosenAPI.Controllers
         [HttpGet("ObtenerTipoActividadAPI")]
         public IActionResult ObtenerTipoActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
             var parameters = new DynamicParameters();
             parameters.Add("@Id_Tipo_Actividad", id);
 
-            var response = context.QueryFirstOrDefault<TipoActividadModel>("spObtenerTipoActividad", parameters);
+            var response = context.QueryFirstOrDefault<TipoActividadModel>("SELECT * FROM spObtenerTipoActividad(@Id_Tipo_Actividad)", parameters);
 
             if (response != null)
                 return Ok(response);
@@ -36,56 +36,88 @@ namespace MinisterioGosenAPI.Controllers
         }
 
         [HttpPost("CrearTipoActividadAPI")]
-        public IActionResult CrearTipoActividadAPI(TipoActividadModel model)
+        public async Task<IActionResult> CrearTipoActividadAPI(TipoActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
 
-            var response = context.Execute("spCrearTipoActividad", parameters);
+                await context.ExecuteAsync("CALL spCrearTipoActividad(@Nombre_Tipo)", parameters);
 
-            if (response > 0)
-                return Ok(response);
-
-            return BadRequest("No se ha registrado el tipo de actividad");
+                return Ok("Tipo de actividad creado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPut("ActualizarTipoActividadAPI")]
-        public IActionResult ActualizarTipoActividadAPI(TipoActividadModel model)
+        public async Task<IActionResult> ActualizarTipoActividadAPI(TipoActividadModel model)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
-            parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Tipo_Actividad", model.Id_Tipo_Actividad);
+                parameters.Add("@Nombre_Tipo", model.Nombre_Tipo);
 
-            var response = context.Execute("spActualizarTipoActividad", parameters);
+                await context.ExecuteAsync(@"CALL spActualizarTipoActividad(@Id_Tipo_Actividad,@Nombre_Tipo)", parameters);
 
-            if (response > 0)
-                return Ok(response);
-
-            return BadRequest("No se ha actualizado el tipo de actividad");
+                return Ok("Tipo de actividad actualizado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpDelete("EliminarTipoActividadAPI")]
-        public IActionResult EliminarTipoActividadAPI(int id)
+        public async Task<IActionResult> EliminarTipoActividadAPI(int id)
         {
-            using var context = new SqlConnection(_config["ConnectionStrings:DefaultConnection"]);
+            try
+            {
+                await using var context = new NpgsqlConnection(_config["ConnectionStrings:DefaultConnection"]);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id_Tipo_Actividad", id);
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id_Tipo_Actividad", id);
 
-            try{
-                var response = context.Execute("spEliminarTipoActividad", parameters);
+                await context.ExecuteAsync("CALL spEliminarTipoActividad(@Id_Tipo_Actividad)", parameters);
 
-                if (response > 0)
-                    return Ok(response);
-
-                return BadRequest("No se ha eliminado el tipo de actividad");
-            }catch{
-                    return BadRequest("No se puede eliminar este tipo de actividad porque tiene información relacionada.");
-                }
+                return Ok("Tipo de actividad eliminado correctamente");
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest("No se puede eliminar este tipo de actividad porque tiene información relacionada.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("No se puede eliminar este tipo de actividad porque tiene información relacionada.");
+            }
         }
     }
 }
