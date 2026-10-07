@@ -1,0 +1,199 @@
+.campana-section {
+    background: #ffffff;
+    border: 1px solid #eef0f2;
+    border-radius: 1rem;
+}
+
+.campana-section-title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.campana-section-subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ICONOS
+   ========================================================= */
+
+.campana-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #edf5f4;
+    color: #064442;
+    font-size: 1.25rem;
+}
+
+
+/* =========================================================
+   PLANTILLAS
+   ========================================================= */
+
+.plantilla-card {
+    height: 100%;
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 1rem;
+    background: #ffffff;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+    .plantilla-card:hover {
+        transform: translateY(-2px);
+        border-color: #9fb9b7;
+        box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.06);
+    }
+
+.btn-check:checked + .plantilla-card {
+    border-color: #064442;
+    background: #f2f8f7;
+    box-shadow: 0 0 0 0.15rem rgba(6, 68, 66, 0.08);
+}
+
+
+/* =========================================================
+   DESTINATARIOS
+   ========================================================= */
+
+.destinatario-option {
+    border: 1px solid #e9ecef;
+    border-radius: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+    .destinatario-option:hover {
+        background: #f8f9fa;
+        border-color: #cfd7d6;
+    }
+
+    .destinatario-option.seleccionado {
+        border-color: #064442;
+        background: #f2f8f7;
+        box-shadow: 0 0 0 0.1rem rgba(6, 68, 66, 0.05);
+    }
+
+    .destinatario-option.deshabilitado {
+        opacity: 0.45;
+        cursor: default;
+    }
+
+.campana-resumen {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.85rem;
+}
+
+
+/* =========================================================
+   CONTADORES
+   ========================================================= */
+
+.campana-counter {
+    font-size: 0.78rem;
+    color: #8a9197;
+}
+
+
+/* =========================================================
+   PREVISUALIZACIÓN
+   ========================================================= */
+
+.campana-preview-wrapper {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.email-preview {
+    overflow: hidden;
+    border: 1px solid #e5e7e9;
+    border-radius: 1rem;
+    background: #f4f6f6;
+}
+
+.email-preview-header {
+    padding: 1.5rem;
+    color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+    .email-preview-header.plantilla-general {
+        background: #064442;
+    }
+
+    .email-preview-header.plantilla-informativa {
+        background: #235c77;
+    }
+
+    .email-preview-header.plantilla-recordatorio {
+        background: #765720;
+    }
+
+.email-preview-body {
+    min-height: 270px;
+    margin: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.85rem;
+    background: #ffffff;
+}
+
+.email-preview-content {
+    white-space: pre-line;
+    color: #495057;
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   FORMULARIO
+   ========================================================= */
+
+#formCampana .form-control,
+#formCampana .form-select {
+    min-height: 45px;
+}
+
+#formCampana textarea.form-control {
+    min-height: 190px;
+    resize: vertical;
+}
+
+#formCampana .form-control:focus,
+#formCampana .form-select:focus {
+    border-color: rgba(6, 68, 66, 0.6);
+    box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.08);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 991.98px) {
+
+    .campana-preview-wrapper {
+        position: static;
+    }
+}
+
+@media (max-width: 575.98px) {
+
+    .campana-section {
+        padding: 1.25rem !important;
+    }
+
+    .email-preview-body {
+        margin: 0.75rem;
+        padding: 1.25rem;
+    }
+}
