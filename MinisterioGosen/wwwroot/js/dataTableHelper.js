@@ -56,16 +56,16 @@
         }
     };
 
+    const configuracionExportacion = window.dataTableExportOptions ?? {};
+
     new DataTable(tabla, {
         ...configuracionPredeterminada,
+        ...configuracionExportacion,
         ...opciones
     });
 }
 
-/*
- * Inicializa automáticamente todas las tablas
- * que tengan el atributo data-datatable.
- */
+
 document.addEventListener("DOMContentLoaded", function () {
     const tablas = document.querySelectorAll("table[data-datatable]");
 
