@@ -298,9 +298,15 @@ BEGIN
 END;
 $$;
 
+-- Compatibilidad con Npgsql/Dapper:
+-- los parámetros string preparados llegan a PostgreSQL como TEXT.
+-- Se conserva el segundo parámetro original por compatibilidad.
+DROP FUNCTION IF EXISTS spIniciarSesionUsuario(varchar, varchar);
+DROP FUNCTION IF EXISTS spIniciarSesionUsuario(text, text);
+
 CREATE OR REPLACE FUNCTION spIniciarSesionUsuario(
-    p_correo varchar(100),
-    p_contrasena varchar(255) DEFAULT NULL
+    p_correo text,
+    p_contrasena text DEFAULT NULL
 )
 RETURNS TABLE (
     id_usuario integer,
@@ -321,7 +327,10 @@ AS $$
       AND u.estado = 'A';
 $$;
 
-CREATE OR REPLACE FUNCTION spValidarCorreo(p_correo varchar(100))
+DROP FUNCTION IF EXISTS spValidarCorreo(varchar);
+DROP FUNCTION IF EXISTS spValidarCorreo(text);
+
+CREATE OR REPLACE FUNCTION spValidarCorreo(p_correo text)
 RETURNS TABLE (
     id_usuario integer,
     identificacion varchar(20),
@@ -1500,5 +1509,622 @@ AS $$
       AND (p_fechafin IS NULL OR um.fecha_ingreso <= p_fechafin)
     ORDER BY m.descripcion_ministerio, u.nombre;
 $$;
+
+
+-- =============================================================
+-- CAMPAÑAS
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarPlantillasCampana()
+RETURNS TABLE (
+    codigo varchar(30),
+    nombre varchar(50),
+    descripcion varchar(200),
+    icono varchar(50),
+    color_encabezado varchar(20),
+    activo boolean
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cp.codigo,
+        cp.nombre,
+        cp.descripcion,
+        cp.icono,
+        cp.color_encabezado,
+        cp.activo
+    FROM campana_plantilla cp
+    WHERE cp.activo = true
+    ORDER BY cp.nombre;
+$$;
+
+
+CREATE OR REPLACE FUNCTION spCrearListaDistribucion(
+    p_ids_roles integer[] DEFAULT ARRAY[]::integer[],
+    p_ids_ministerios integer[] DEFAULT ARRAY[]::integer[],
+    p_todos boolean DEFAULT false
+)
+RETURNS TABLE (
+    id_usuario integer,
+    nombre varchar(100),
+    correo varchar(100),
+    id_rol integer,
+    rol varchar(20)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    -- Evita que una selección vacía sea interpretada como "todos"
+    IF COALESCE(p_todos, false) = false
+       AND COALESCE(cardinality(p_ids_roles), 0) = 0
+       AND COALESCE(cardinality(p_ids_ministerios), 0) = 0
+    THEN
+        RAISE EXCEPTION
+            'Debe seleccionar al menos un rol, un ministerio o la opción Todos.';
+    END IF;
+
+    RETURN QUERY
+
+    SELECT DISTINCT
+        u.id_usuario,
+        u.nombre,
+        u.correo,
+        u.id_rol,
+        r.descripcion AS rol
+
+    FROM usuario u
+
+    INNER JOIN rol r
+        ON r.id_rol = u.id_rol
+
+    WHERE u.estado = 'A'
+
+      -- Filtro por rol
+      AND (
+            COALESCE(p_todos, false) = true
+
+            OR COALESCE(cardinality(p_ids_roles), 0) = 0
+
+            OR u.id_rol = ANY(
+                COALESCE(
+                    p_ids_roles,
+                    ARRAY[]::integer[]
+                )
+            )
+      )
+
+      -- Filtro por ministerio
+      AND (
+            COALESCE(p_todos, false) = true
+
+            OR COALESCE(cardinality(p_ids_ministerios), 0) = 0
+
+            OR EXISTS (
+                SELECT 1
+
+                FROM usuarios_ministerio um
+
+                WHERE um.id_usuario = u.id_usuario
+
+                  AND um.id_ministerio = ANY(
+                      COALESCE(
+                          p_ids_ministerios,
+                          ARRAY[]::integer[]
+                      )
+                  )
+
+                  AND um.fecha_salida IS NULL
+
+                  AND um.estado = 'Activo'
+            )
+      )
+
+    ORDER BY u.nombre;
+
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION spCrearCampana(
+    p_titulo varchar(150),
+    p_asunto varchar(200),
+    p_contenido text,
+    p_plantilla varchar(30),
+    p_id_usuario_creador integer
+)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_id_campana integer;
+BEGIN
+
+    -- =========================================================
+    -- VALIDACIONES
+    -- =========================================================
+
+    IF p_titulo IS NULL
+       OR btrim(p_titulo) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el título de la campaña.';
+    END IF;
+
+
+    IF p_asunto IS NULL
+       OR btrim(p_asunto) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el asunto de la campaña.';
+    END IF;
+
+
+    IF p_contenido IS NULL
+       OR btrim(p_contenido) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe ingresar el contenido de la campaña.';
+    END IF;
+
+
+    IF p_plantilla IS NULL
+       OR btrim(p_plantilla) = ''
+    THEN
+        RAISE EXCEPTION
+            'Debe seleccionar una plantilla.';
+    END IF;
+
+
+    -- La plantilla debe existir y estar activa
+    IF NOT EXISTS (
+        SELECT 1
+        FROM campana_plantilla cp
+        WHERE cp.codigo = p_plantilla
+          AND cp.activo = true
+    )
+    THEN
+        RAISE EXCEPTION
+            'La plantilla seleccionada no existe o está inactiva.';
+    END IF;
+
+
+    -- El creador debe existir y estar activo
+    IF NOT EXISTS (
+        SELECT 1
+        FROM usuario u
+        WHERE u.id_usuario = p_id_usuario_creador
+          AND u.estado = 'A'
+    )
+    THEN
+        RAISE EXCEPTION
+            'El usuario creador no existe o está inactivo.';
+    END IF;
+
+
+    -- =========================================================
+    -- CREAR CAMPAÑA
+    -- =========================================================
+
+    INSERT INTO campana (
+        titulo,
+        asunto,
+        contenido,
+        plantilla,
+        estado,
+        fecha_creacion,
+        id_usuario_creador
+    )
+    VALUES (
+        btrim(p_titulo),
+        btrim(p_asunto),
+        p_contenido,
+        p_plantilla,
+        'Borrador',
+        CURRENT_TIMESTAMP,
+        p_id_usuario_creador
+    )
+    RETURNING id_campana
+    INTO v_id_campana;
+
+
+    RETURN v_id_campana;
+
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE spCrearDestinatariosCampana(
+    p_id_campana integer,
+    p_ids_roles integer[],
+    p_ids_ministerios integer[],
+    p_todos boolean
+)
+LANGUAGE sql
+AS $$
+
+    INSERT INTO campana_destinatario (
+        id_campana,
+        id_usuario,
+        nombre_destinatario,
+        correo_destinatario,
+        estado_envio
+    )
+
+    SELECT
+        p_id_campana,
+        d.id_usuario,
+        d.nombre,
+        d.correo,
+        'Pendiente'
+
+    FROM spCrearListaDistribucion(
+        p_ids_roles,
+        p_ids_ministerios,
+        p_todos
+    ) d
+
+    ON CONFLICT (
+        id_campana,
+        correo_destinatario
+    )
+    DO NOTHING;
+
+$$;
+
+
+CREATE OR REPLACE PROCEDURE spActualizarEstadoEnvioCampana(
+    p_id_campana_destinatario bigint,
+    p_estado varchar(20),
+    p_detalle_error text DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    -- Este SP solamente debe utilizarse después
+    -- de intentar enviar el correo.
+    IF p_estado NOT IN ('Enviado', 'Error') THEN
+        RAISE EXCEPTION
+            'El estado del envío debe ser Enviado o Error.';
+    END IF;
+
+    UPDATE campana_destinatario
+
+    SET
+        estado_envio = p_estado,
+
+        fecha_envio =
+            CASE
+                WHEN p_estado = 'Enviado'
+                    THEN CURRENT_TIMESTAMP
+                ELSE NULL
+            END,
+
+        detalle_error =
+            CASE
+                WHEN p_estado = 'Error'
+                    THEN p_detalle_error
+                ELSE NULL
+            END
+
+    WHERE id_campana_destinatario =
+          p_id_campana_destinatario;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'No se encontró el destinatario de la campaña.';
+    END IF;
+
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION fnLogEnvioCampana()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF NEW.estado_envio IS DISTINCT FROM OLD.estado_envio
+       AND NEW.estado_envio IN ('Enviado', 'Error')
+    THEN
+
+        INSERT INTO campana_envio_log (
+            id_campana,
+            id_usuario,
+            nombre_destinatario,
+            correo_destinatario,
+            asunto,
+            contenido,
+            estado,
+            fecha,
+            detalle_error
+        )
+
+        SELECT
+            NEW.id_campana,
+            NEW.id_usuario,
+            NEW.nombre_destinatario,
+            NEW.correo_destinatario,
+            c.asunto,
+            c.contenido,
+            NEW.estado_envio,
+            CURRENT_TIMESTAMP,
+            NEW.detalle_error
+
+        FROM campana c
+
+        WHERE c.id_campana = NEW.id_campana;
+
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$;
+
+-- =============================================================
+-- ACTUALIZAR ESTADO GENERAL DE LA CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE PROCEDURE spActualizarEstadoCampana(
+    p_id_campana integer,
+    p_estado varchar(20)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF p_estado NOT IN (
+        'Borrador',
+        'Procesando',
+        'Enviada',
+        'Parcial',
+        'Error'
+    )
+    THEN
+        RAISE EXCEPTION
+            'Estado de campaña no válido.';
+    END IF;
+
+
+    UPDATE campana
+
+    SET
+        estado = p_estado,
+
+        fecha_envio =
+            CASE
+                WHEN p_estado IN (
+                    'Enviada',
+                    'Parcial',
+                    'Error'
+                )
+                THEN CURRENT_TIMESTAMP
+
+                ELSE fecha_envio
+            END
+
+    WHERE id_campana = p_id_campana;
+
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'No se encontró la campaña indicada.';
+    END IF;
+
+END;
+$$;
+
+
+-- =============================================================
+-- OBTENER DESTINATARIOS PENDIENTES
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarDestinatariosPendientesCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana_destinatario bigint,
+    id_usuario integer,
+    nombre_destinatario varchar(100),
+    correo_destinatario varchar(100)
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cd.id_campana_destinatario,
+        cd.id_usuario,
+        cd.nombre_destinatario,
+        cd.correo_destinatario
+
+    FROM campana_destinatario cd
+
+    WHERE cd.id_campana = p_id_campana
+      AND cd.estado_envio = 'Pendiente'
+
+    ORDER BY
+        cd.nombre_destinatario,
+        cd.id_campana_destinatario;
+$$;
+
+-- =============================================================
+-- LISTAR CAMPAÑAS
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarCampanas()
+RETURNS TABLE (
+    id_campana integer,
+    titulo varchar(150),
+    asunto varchar(200),
+    plantilla varchar(30),
+    estado varchar(20),
+    fecha_creacion timestamp,
+    fecha_envio timestamp,
+    id_usuario_creador integer,
+    nombre_creador varchar(100),
+    total_destinatarios bigint,
+    total_enviados bigint,
+    total_errores bigint
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.plantilla,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre AS nombre_creador,
+
+        COUNT(cd.id_campana_destinatario)
+            AS total_destinatarios,
+
+        COUNT(cd.id_campana_destinatario)
+            FILTER (
+                WHERE cd.estado_envio = 'Enviado'
+            )
+            AS total_enviados,
+
+        COUNT(cd.id_campana_destinatario)
+            FILTER (
+                WHERE cd.estado_envio = 'Error'
+            )
+            AS total_errores
+
+    FROM campana c
+
+    INNER JOIN usuario u
+        ON u.id_usuario =
+           c.id_usuario_creador
+
+    LEFT JOIN campana_destinatario cd
+        ON cd.id_campana =
+           c.id_campana
+
+    GROUP BY
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.plantilla,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre
+
+    ORDER BY
+        c.fecha_creacion DESC,
+        c.id_campana DESC;
+$$;
+
+
+-- =============================================================
+-- OBTENER CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spObtenerCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana integer,
+    titulo varchar(150),
+    asunto varchar(200),
+    contenido text,
+    plantilla varchar(30),
+    nombre_plantilla varchar(50),
+    color_encabezado varchar(20),
+    estado varchar(20),
+    fecha_creacion timestamp,
+    fecha_envio timestamp,
+    id_usuario_creador integer,
+    nombre_creador varchar(100)
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        c.id_campana,
+        c.titulo,
+        c.asunto,
+        c.contenido,
+        c.plantilla,
+        cp.nombre AS nombre_plantilla,
+        cp.color_encabezado,
+        c.estado,
+        c.fecha_creacion,
+        c.fecha_envio,
+        c.id_usuario_creador,
+        u.nombre AS nombre_creador
+
+    FROM campana c
+
+    INNER JOIN usuario u
+        ON u.id_usuario =
+           c.id_usuario_creador
+
+    INNER JOIN campana_plantilla cp
+        ON cp.codigo =
+           c.plantilla
+
+    WHERE
+        c.id_campana =
+        p_id_campana;
+$$;
+
+
+-- =============================================================
+-- LISTAR DESTINATARIOS DE UNA CAMPAÑA
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION spListarDestinatariosCampana(
+    p_id_campana integer
+)
+RETURNS TABLE (
+    id_campana_destinatario bigint,
+    id_usuario integer,
+    nombre_destinatario varchar(100),
+    correo_destinatario varchar(100),
+    estado_envio varchar(20),
+    fecha_envio timestamp,
+    detalle_error text
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        cd.id_campana_destinatario,
+        cd.id_usuario,
+        cd.nombre_destinatario,
+        cd.correo_destinatario,
+        cd.estado_envio,
+        cd.fecha_envio,
+        cd.detalle_error
+
+    FROM campana_destinatario cd
+
+    WHERE
+        cd.id_campana =
+        p_id_campana
+
+    ORDER BY
+        cd.nombre_destinatario,
+        cd.id_campana_destinatario;
+$$;
+
+
+-- Permite ejecutar nuevamente el archivo de rutinas
+-- sin que falle porque el trigger ya existe.
+DROP TRIGGER IF EXISTS trgLogEnvioCampana
+ON campana_destinatario;
+
+
+CREATE TRIGGER trgLogEnvioCampana
+AFTER UPDATE OF estado_envio
+ON campana_destinatario
+FOR EACH ROW
+EXECUTE FUNCTION fnLogEnvioCampana();
 
 COMMIT;

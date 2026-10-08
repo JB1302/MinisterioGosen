@@ -1,0 +1,907 @@
+﻿@using Microsoft.AspNetCore.Mvc.Rendering
+@using MinisterioGosen.Models
+@model MinisterioGosen.Models.CampanaCrearModel
+
+@{
+    ViewData["Title"] = "Nueva campaña";
+
+    var roles = ViewBag.Roles as IEnumerable<SelectListItem>
+                ?? new List<SelectListItem>();
+
+    var ministerios = ViewBag.Ministerios as IEnumerable<SelectListItem>
+                      ?? new List<SelectListItem>();
+
+    var plantillas = ViewBag.Plantillas as IEnumerable<CampanaPlantillaModel>
+                     ?? new List<CampanaPlantillaModel>();
+
+    var plantillaInicial = plantillas.FirstOrDefault(
+        x => x.Codigo == Model.Plantilla
+    ) ?? plantillas.FirstOrDefault();
+
+    var colorInicial =
+        plantillaInicial?.Color_Encabezado
+        ?? "#064442";
+}
+
+<link rel="stylesheet"
+      href="~/css/campana.css"
+      asp-append-version="true" />
+
+<div class="container py-4">
+
+    <!-- ========================================================= -->
+    <!-- ENCABEZADO                                                -->
+    <!-- ========================================================= -->
+
+    <div class="d-flex flex-column flex-md-row
+                justify-content-between align-items-md-center
+                gap-3 mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+
+                <i class="bi bi-megaphone-fill
+                          me-2 text-primary"></i>
+
+                Nueva campaña
+
+            </h2>
+
+            <p class="text-muted mb-0">
+
+                Cree un mensaje y seleccione las personas
+                que recibirán la comunicación.
+
+            </p>
+
+        </div>
+
+
+        <a asp-controller="Campana"
+           asp-action="Index"
+           class="btn btn-outline-secondary
+                  rounded-pill px-4">
+
+            <i class="bi bi-arrow-left me-1"></i>
+
+            Volver
+
+        </a>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- MENSAJES                                                  -->
+    <!-- ========================================================= -->
+
+    @if (ViewBag.Mensaje != null)
+    {
+        <div class="alert alert-warning
+                    d-flex align-items-center
+                    gap-2 rounded-3">
+
+            <i class="bi bi-exclamation-triangle-fill"></i>
+
+            <span>
+                @ViewBag.Mensaje
+            </span>
+
+        </div>
+    }
+
+
+    <div id="mensajeValidacion"
+         class="alert alert-danger
+                d-none rounded-3"
+         role="alert">
+
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+
+        <span id="textoValidacion"></span>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULARIO                                                -->
+    <!-- ========================================================= -->
+
+    <form asp-controller="Campana"
+          asp-action="Crear"
+          method="post"
+          id="formCampana"
+          novalidate>
+
+        <div class="row g-4">
+
+            <!-- ================================================= -->
+            <!-- CONTENIDO PRINCIPAL                               -->
+            <!-- ================================================= -->
+
+            <div class="col-lg-8">
+
+                <!-- ============================================= -->
+                <!-- CONTENIDO DE LA CAMPAÑA                       -->
+                <!-- ============================================= -->
+
+                <div class="campana-section
+                            shadow-sm p-4 mb-4">
+
+                    <div class="d-flex
+                                align-items-start
+                                gap-3 mb-4">
+
+                        <div class="campana-icon">
+
+                            <i class="bi bi-pencil-square"></i>
+
+                        </div>
+
+
+                        <div>
+
+                            <div class="campana-section-title">
+
+                                Contenido de la campaña
+
+                            </div>
+
+
+                            <div class="campana-section-subtitle">
+
+                                Defina el título, asunto y mensaje
+                                que recibirán los destinatarios.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="row g-4">
+
+                        <!-- Título -->
+                        <div class="col-md-6">
+
+                            <label asp-for="Titulo"
+                                   class="form-label fw-semibold">
+
+                                <i class="bi bi-type
+                                          me-1 text-muted"></i>
+
+                                Título de la campaña
+
+                            </label>
+
+
+                            <input asp-for="Titulo"
+                                   id="Titulo"
+                                   maxlength="150"
+                                   class="form-control rounded-3"
+                                   placeholder="Ej. Reunión general de octubre" />
+
+
+                            <div class="d-flex
+                                        justify-content-between
+                                        mt-1">
+
+                                <div class="invalid-feedback">
+
+                                    Debe ingresar el título
+                                    de la campaña.
+
+                                </div>
+
+
+                                <small class="campana-counter ms-auto">
+
+                                    <span id="contadorTitulo">
+                                        0
+                                    </span>/150
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Asunto -->
+                        <div class="col-md-6">
+
+                            <label asp-for="Asunto"
+                                   class="form-label fw-semibold">
+
+                                <i class="bi bi-envelope-fill
+                                          me-1 text-muted"></i>
+
+                                Asunto del correo
+
+                            </label>
+
+
+                            <input asp-for="Asunto"
+                                   id="Asunto"
+                                   maxlength="200"
+                                   class="form-control rounded-3"
+                                   placeholder="Ej. Información importante del Ministerio Gosén" />
+
+
+                            <div class="d-flex
+                                        justify-content-between
+                                        mt-1">
+
+                                <div class="invalid-feedback">
+
+                                    Debe ingresar el asunto
+                                    del correo.
+
+                                </div>
+
+
+                                <small class="campana-counter ms-auto">
+
+                                    <span id="contadorAsunto">
+                                        0
+                                    </span>/200
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Contenido -->
+                        <div class="col-12">
+
+                            <label asp-for="Contenido"
+                                   class="form-label fw-semibold">
+
+                                <i class="bi bi-chat-left-text-fill
+                                          me-1 text-muted"></i>
+
+                                Contenido
+
+                            </label>
+
+
+                            <textarea asp-for="Contenido"
+                                      id="Contenido"
+                                      rows="9"
+                                      class="form-control rounded-3"
+                                      placeholder="Escriba aquí el contenido de la campaña..."></textarea>
+
+
+                            <div class="invalid-feedback">
+
+                                Debe ingresar el contenido
+                                de la campaña.
+
+                            </div>
+
+
+                            <div class="form-text">
+
+                                El nombre de cada persona será
+                                agregado automáticamente al saludo.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ============================================= -->
+                <!-- PLANTILLAS DINÁMICAS                          -->
+                <!-- ============================================= -->
+
+                <div class="campana-section
+                            shadow-sm p-4 mb-4">
+
+                    <div class="d-flex
+                                align-items-start
+                                gap-3 mb-4">
+
+                        <div class="campana-icon">
+
+                            <i class="bi bi-palette-fill"></i>
+
+                        </div>
+
+
+                        <div>
+
+                            <div class="campana-section-title">
+
+                                Estilo del mensaje
+
+                            </div>
+
+
+                            <div class="campana-section-subtitle">
+
+                                Seleccione uno de los formatos
+                                predefinidos disponibles.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    @if (plantillas.Any())
+                    {
+                        <div class="row g-3">
+
+                            @{
+                                var indicePlantilla = 0;
+                            }
+
+
+                            @foreach (var plantilla in plantillas)
+                            {
+                                var idPlantilla =
+                                    $"plantilla_{indicePlantilla}";
+
+                                indicePlantilla++;
+
+
+                                <div class="col-md-4">
+
+                                    <input asp-for="Plantilla"
+                                           type="radio"
+                                           class="btn-check
+                                                  plantilla-option"
+                                           value="@plantilla.Codigo"
+                                           id="@idPlantilla"
+                                           data-color="@plantilla.Color_Encabezado"
+                                           autocomplete="off" />
+
+
+                                    <label for="@idPlantilla"
+                                           class="plantilla-card
+                                                  p-3 d-block">
+
+                                        <div class="campana-icon mb-3">
+
+                                            <i class="bi @plantilla.Icono"></i>
+
+                                        </div>
+
+
+                                        <div class="fw-bold">
+
+                                            @plantilla.Nombre
+
+                                        </div>
+
+
+                                        <small class="text-muted">
+
+                                            @plantilla.Descripcion
+
+                                        </small>
+
+                                    </label>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert
+                                    alert-light
+                                    border
+                                    rounded-3
+                                    mb-0">
+
+                            <div class="d-flex
+                                        align-items-center
+                                        gap-2">
+
+                                <i class="bi bi-info-circle-fill
+                                          text-primary"></i>
+
+                                <span class="text-muted">
+
+                                    No existen plantillas de campaña
+                                    disponibles actualmente.
+
+                                </span>
+
+                            </div>
+
+                        </div>
+                    }
+
+                </div>
+
+
+                <!-- ============================================= -->
+                <!-- DESTINATARIOS                                 -->
+                <!-- ============================================= -->
+
+                <div class="campana-section
+                            shadow-sm p-4">
+
+                    <div class="d-flex
+                                align-items-start
+                                gap-3 mb-4">
+
+                        <div class="campana-icon">
+
+                            <i class="bi bi-people-fill"></i>
+
+                        </div>
+
+
+                        <div>
+
+                            <div class="campana-section-title">
+
+                                Destinatarios
+
+                            </div>
+
+
+                            <div class="campana-section-subtitle">
+
+                                Seleccione todos los usuarios
+                                o genere la lista según rol
+                                y ministerio.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Todos -->
+                    <div class="destinatario-option mb-4"
+                         id="opcionTodos">
+
+                        <div class="form-check
+                                    form-switch mb-0">
+
+                            <input asp-for="Todos"
+                                   class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="Todos" />
+
+
+                            <label class="form-check-label
+                                          fw-semibold"
+                                   for="Todos">
+
+                                <i class="bi bi-broadcast me-1"></i>
+
+                                Enviar a todos los usuarios activos
+
+                            </label>
+
+                        </div>
+
+
+                        <small class="text-muted
+                                      d-block
+                                      mt-1
+                                      ms-4">
+
+                            Los filtros de roles y ministerios
+                            serán ignorados.
+
+                        </small>
+
+                    </div>
+
+
+                    <div id="contenedorFiltrosDestinatarios">
+
+                        <div class="row g-4">
+
+                            <!-- Roles -->
+                            <div class="col-md-6">
+
+                                <h6 class="fw-bold mb-3">
+
+                                    <i class="bi bi-person-badge-fill
+                                              me-2 text-primary"></i>
+
+                                    Roles
+
+                                </h6>
+
+
+                                @if (roles.Any())
+                                {
+                                    <div class="d-grid gap-2">
+
+                                        @foreach (var rol in roles)
+                                        {
+                                            <label class="destinatario-option
+                                                          d-flex
+                                                          align-items-center
+                                                          gap-3">
+
+                                                <input type="checkbox"
+                                                       name="IdsRoles"
+                                                       value="@rol.Value"
+                                                       class="form-check-input
+                                                              destinatario-check
+                                                              rol-check
+                                                              mt-0"
+                                                       checked="@rol.Selected" />
+
+
+                                                <span>
+
+                                                    <span class="fw-semibold
+                                                                 d-block">
+
+                                                        @rol.Text
+
+                                                    </span>
+
+
+                                                    <small class="text-muted">
+
+                                                        Incluir personas
+                                                        con este rol.
+
+                                                    </small>
+
+                                                </span>
+
+                                            </label>
+                                        }
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted small">
+
+                                        No hay roles disponibles.
+
+                                    </div>
+                                }
+
+                            </div>
+
+
+                            <!-- Ministerios -->
+                            <div class="col-md-6">
+
+                                <h6 class="fw-bold mb-3">
+
+                                    <i class="bi bi-building-fill
+                                              me-2 text-primary"></i>
+
+                                    Ministerios
+
+                                </h6>
+
+
+                                @if (ministerios.Any())
+                                {
+                                    <div class="d-grid gap-2">
+
+                                        @foreach (var ministerio
+                                            in ministerios)
+                                        {
+                                            <label class="destinatario-option
+                                                          d-flex
+                                                          align-items-center
+                                                          gap-3">
+
+                                                <input type="checkbox"
+                                                       name="IdsMinisterios"
+                                                       value="@ministerio.Value"
+                                                       class="form-check-input
+                                                              destinatario-check
+                                                              ministerio-check
+                                                              mt-0"
+                                                       checked="@ministerio.Selected" />
+
+
+                                                <span>
+
+                                                    <span class="fw-semibold
+                                                                 d-block">
+
+                                                        @ministerio.Text
+
+                                                    </span>
+
+
+                                                    <small class="text-muted">
+
+                                                        Incluir miembros
+                                                        activos del ministerio.
+
+                                                    </small>
+
+                                                </span>
+
+                                            </label>
+                                        }
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted small">
+
+                                        No hay ministerios disponibles.
+
+                                    </div>
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Resumen -->
+                    <div class="campana-resumen
+                                p-3 mt-4">
+
+                        <div class="d-flex gap-3">
+
+                            <i class="bi bi-info-circle-fill
+                                      text-primary fs-5"></i>
+
+
+                            <div>
+
+                                <div class="fw-semibold">
+
+                                    Selección de destinatarios
+
+                                </div>
+
+
+                                <small id="resumenDestinatarios"
+                                       class="text-muted">
+
+                                    Seleccione al menos un rol,
+                                    ministerio o la opción "Todos".
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- VISTA PREVIA                                     -->
+            <!-- ================================================= -->
+
+            <div class="col-lg-4">
+
+                <div class="campana-preview-wrapper">
+
+                    <div class="card
+                                border-0
+                                shadow-sm
+                                rounded-4">
+
+                        <div class="card-header
+                                    bg-white
+                                    border-0
+                                    pt-4
+                                    px-4">
+
+                            <div class="d-flex
+                                        align-items-center
+                                        gap-2">
+
+                                <i class="bi bi-eye-fill
+                                          text-primary"></i>
+
+
+                                <h5 class="fw-bold mb-0">
+
+                                    Vista previa
+
+                                </h5>
+
+                            </div>
+
+
+                            <small class="text-muted">
+
+                                Así se verá aproximadamente
+                                el correo.
+
+                            </small>
+
+                        </div>
+
+
+                        <div class="card-body p-4">
+
+                            <div class="email-preview">
+
+                                <div id="previewHeader"
+                                     class="email-preview-header"
+                                     style="background-color:@colorInicial;">
+
+                                    <div class="small
+                                                opacity-75
+                                                mb-1">
+
+                                        Ministerio Gosén
+
+                                    </div>
+
+
+                                    <h5 id="previewTitulo"
+                                        class="fw-bold mb-0">
+
+                                        Título de la campaña
+
+                                    </h5>
+
+                                </div>
+
+
+                                <div class="email-preview-body">
+
+                                    <small class="text-muted
+                                                  d-block
+                                                  mb-3">
+
+                                        Asunto:
+
+                                        <strong id="previewAsunto">
+
+                                            Asunto del correo
+
+                                        </strong>
+
+                                    </small>
+
+
+                                    <p>
+
+                                        Hola
+
+                                        <strong>
+                                            Nombre del destinatario
+                                        </strong>,
+
+                                    </p>
+
+
+                                    <div id="previewContenido"
+                                         class="email-preview-content">
+
+                                        El contenido de la campaña
+                                        aparecerá aquí.
+
+                                    </div>
+
+
+                                    <hr class="my-4" />
+
+
+                                    <small class="text-muted">
+
+                                        Ministerio Gosén
+
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Información de privacidad -->
+                    <div class="alert
+                                alert-light
+                                border
+                                rounded-4
+                                mt-3
+                                mb-0">
+
+                        <div class="d-flex gap-2">
+
+                            <i class="bi bi-shield-check
+                                      text-success"></i>
+
+
+                            <small class="text-muted">
+
+                                Cada persona recibirá el correo
+                                individualmente.
+
+                                Las direcciones de otros
+                                destinatarios no serán visibles.
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ===================================================== -->
+        <!-- ACCIONES                                              -->
+        <!-- ===================================================== -->
+
+        <div class="d-flex
+                    flex-column
+                    flex-sm-row
+                    justify-content-end
+                    gap-2
+                    mt-4">
+
+            <a asp-controller="Campana"
+               asp-action="Index"
+               class="btn
+                      btn-outline-secondary
+                      rounded-pill
+                      px-4">
+
+                Cancelar
+
+            </a>
+
+
+            <button type="submit"
+                    id="btnEnviarCampana"
+                    class="btn
+                           btn-primary
+                           rounded-pill
+                           px-4">
+
+                <i class="bi bi-send-fill me-2"></i>
+
+                Crear y enviar campaña
+
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+@section Scripts
+{
+    <script src="~/js/campana.js"
+            asp-append-version="true"></script>
+}

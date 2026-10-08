@@ -4,42 +4,145 @@ using MimeKit;
 
 namespace MinisterioGosenAPI.Services
 {
-    public class UtilesService(IConfiguration _config) : IUtilesService
+    public class UtilesService(
+        IConfiguration _config) : IUtilesService
     {
         public string GenerarContrasena()
         {
-            return Guid.NewGuid().ToString("N")[..10];
+            return Guid.NewGuid()
+                .ToString("N")[..10];
         }
 
-        public async Task EnviarCorreoAsync(string destinatario, string asunto, string cuerpoHtml)
+
+        public async Task EnviarCorreoAsync(
+            string destinatario,
+            string asunto,
+            string cuerpoHtml)
         {
-            var mensaje = new MimeMessage();
-            var cuentaGmail = _config["Correos:CuentaGmail"]!;
-            var contrasenaAplicacion = _config["Correos:ContrasenaAplicacion"]!;
+            // =====================================================
+            // CONFIGURACIÓN
+            // =====================================================
 
-            if (string.IsNullOrEmpty(contrasenaAplicacion))
-                return;
+            var cuentaGmail =
+                _config["Correos:CuentaGmail"];
 
-            mensaje.From.Add(new MailboxAddress(string.Empty, cuentaGmail));
-            mensaje.To.Add(MailboxAddress.Parse(destinatario));
-            mensaje.Subject = asunto;
+            var contrasenaAplicacion =
+                _config["Correos:ContrasenaAplicacion"];
 
-            mensaje.Body = new TextPart("html")
+
+            if (string.IsNullOrWhiteSpace(cuentaGmail))
             {
-                Text = cuerpoHtml
-            };
+                throw new InvalidOperationException(
+                    "No se ha configurado la cuenta de correo."
+                );
+            }
 
-            using var cliente = new SmtpClient();
+
+            if (string.IsNullOrWhiteSpace(
+                    contrasenaAplicacion))
+            {
+                throw new InvalidOperationException(
+                    "No se ha configurado la contraseña de aplicación del correo."
+                );
+            }
+
+
+            if (string.IsNullOrWhiteSpace(
+                    destinatario))
+            {
+                throw new ArgumentException(
+                    "El destinatario del correo es obligatorio.",
+                    nameof(destinatario)
+                );
+            }
+
+
+            if (string.IsNullOrWhiteSpace(
+                    asunto))
+            {
+                throw new ArgumentException(
+                    "El asunto del correo es obligatorio.",
+                    nameof(asunto)
+                );
+            }
+
+
+            // =====================================================
+            // MENSAJE
+            // =====================================================
+
+            var mensaje =
+                new MimeMessage();
+
+
+            mensaje.From.Add(
+                new MailboxAddress(
+                    "Ministerio Gosén",
+                    cuentaGmail
+                )
+            );
+
+
+            mensaje.To.Add(
+                MailboxAddress.Parse(
+                    destinatario
+                )
+            );
+
+
+            mensaje.Subject =
+                asunto;
+
+
+            mensaje.Body =
+                new TextPart("html")
+                {
+                    Text = cuerpoHtml ?? string.Empty
+                };
+
+
+            // =====================================================
+            // SMTP
+            // =====================================================
+
+            using var cliente =
+                new SmtpClient();
+
 
             try
             {
-                await cliente.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-                await cliente.AuthenticateAsync(cuentaGmail, contrasenaAplicacion);
-                await cliente.SendAsync(mensaje);
+                await cliente.ConnectAsync(
+                    "smtp.gmail.com",
+                    587,
+                    SecureSocketOptions.StartTls
+                );
+
+
+                await cliente.AuthenticateAsync(
+                    cuentaGmail,
+                    contrasenaAplicacion
+                );
+
+
+                await cliente.SendAsync(
+                    mensaje
+                );
             }
             finally
             {
-                await cliente.DisconnectAsync(true);
+                /*
+                 * Solo intentamos desconectar si realmente
+                 * se estableció una conexión.
+                 *
+                 * Esto evita ocultar la excepción original
+                 * si ConnectAsync falla.
+                 */
+                if (cliente.IsConnected)
+                {
+                    await cliente.DisconnectAsync(
+                        true
+                    );
+                }
             }
         }
     }
