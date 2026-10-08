@@ -29,7 +29,9 @@ BEGIN
     FOREACH v_tabla IN ARRAY ARRAY[
         'rol', 'usuario', 'error', 'actividad_usuario',
         'actividades_ministerio', 'usuarios_ministerio', 'citas',
-        'actividad', 'tipo_actividad', 'ministerio', 'chat_bot_opciones'
+        'actividad', 'tipo_actividad', 'ministerio', 'chat_bot_opciones',
+        'campana_plantilla', 'campana', 'campana_destinatario',
+        'campana_envio_log'
     ]
     LOOP
         IF to_regclass('public.' || v_tabla) IS NULL THEN
@@ -726,7 +728,54 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 14. AJUSTAR SECUENCIAS
+-- 14. PLANTILLAS DE CAMPAÑA
+-- ============================================================================
+
+INSERT INTO campana_plantilla
+(
+    codigo,
+    nombre,
+    descripcion,
+    icono,
+    color_encabezado,
+    activo
+)
+VALUES
+(
+    'General',
+    'General',
+    'Comunicaciones generales del Ministerio.',
+    'bi-envelope-paper-fill',
+    '#064442',
+    true
+),
+(
+    'Informativa',
+    'Informativa',
+    'Noticias, avisos y comunicados.',
+    'bi-info-circle-fill',
+    '#235c77',
+    true
+),
+(
+    'Recordatorio',
+    'Recordatorio',
+    'Reuniones, actividades y fechas importantes.',
+    'bi-bell-fill',
+    '#765720',
+    true
+)
+ON CONFLICT (codigo) DO UPDATE
+SET
+    nombre = EXCLUDED.nombre,
+    descripcion = EXCLUDED.descripcion,
+    icono = EXCLUDED.icono,
+    color_encabezado = EXCLUDED.color_encabezado,
+    activo = EXCLUDED.activo;
+
+
+-- ============================================================================
+-- 15. AJUSTAR SECUENCIAS
 -- ============================================================================
 SELECT setval(pg_get_serial_sequence('usuario','id_usuario'), COALESCE((SELECT MAX(id_usuario) FROM usuario), 1), true);
 SELECT setval(pg_get_serial_sequence('ministerio','id_ministerio'), COALESCE((SELECT MAX(id_ministerio) FROM ministerio), 1), true);
@@ -742,7 +791,7 @@ SELECT setval(pg_get_serial_sequence('chat_bot_opciones','id_opcion'), COALESCE(
 COMMIT;
 
 -- ============================================================================
--- 15. VALIDACION RAPIDA
+-- 16. VALIDACION RAPIDA
 -- ============================================================================
 SELECT 'rol' AS tabla, COUNT(*) AS total FROM rol
 UNION ALL SELECT 'usuario', COUNT(*) FROM usuario
@@ -755,6 +804,10 @@ UNION ALL SELECT 'usuarios_ministerio', COUNT(*) FROM usuarios_ministerio
 UNION ALL SELECT 'citas', COUNT(*) FROM citas
 UNION ALL SELECT 'error', COUNT(*) FROM error
 UNION ALL SELECT 'chat_bot_opciones', COUNT(*) FROM chat_bot_opciones
+UNION ALL SELECT 'campana_plantilla', COUNT(*) FROM campana_plantilla
+UNION ALL SELECT 'campana', COUNT(*) FROM campana
+UNION ALL SELECT 'campana_destinatario', COUNT(*) FROM campana_destinatario
+UNION ALL SELECT 'campana_envio_log', COUNT(*) FROM campana_envio_log
 ORDER BY tabla;
 
 SELECT estado, COUNT(*) AS total

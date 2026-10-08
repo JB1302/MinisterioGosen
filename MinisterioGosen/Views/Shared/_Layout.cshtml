@@ -401,6 +401,33 @@
                                     </a>
                                 </li>
 
+                                <!-- Campañas -->
+                                <li>
+                                    <a asp-controller="Campana"
+                                       asp-action="Index"
+                                       class="dropdown-item d-flex align-items-center gap-3
+                                        py-2 rounded-2
+                                        @(NavActivo(
+                                          "Campana",
+                                          "Index",
+                                          "Crear",
+                                          "Detalle"
+                                      ))">
+
+                                        <i class="bi bi-megaphone-fill text-warning fs-5"></i>
+
+                                        <div>
+                                            <div class="fw-semibold">
+                                                Campañas
+                                            </div>
+
+                                            <small class="text-muted">
+                                                Crear y consultar campañas
+                                            </small>
+                                        </div>
+                                    </a>
+                                </li>
+
                                 <!-- Actividades por usuario -->
                                 <li>
                                     <a asp-controller="ActividadUsuario"
