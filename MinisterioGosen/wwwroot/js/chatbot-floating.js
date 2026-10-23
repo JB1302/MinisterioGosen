@@ -1,7 +1,13 @@
-﻿(function () {
+﻿
+(function () {
     let chatbotCargado = false;
+    let enviandoTicket = false;
 
-    document.addEventListener("DOMContentLoaded", inicializarChatbot);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", inicializarChatbot);
+    } else {
+        inicializarChatbot();
+    }
 
     function inicializarChatbot() {
         const chatbotPanel = document.getElementById("chatbotOffcanvas");
@@ -14,8 +20,8 @@
             ocultarBotonesFlotantes();
 
             if (!chatbotCargado) {
-                cargarChatbotMenuPrincipal();
                 chatbotCargado = true;
+                cargarChatbotMenuPrincipal();
             }
         });
 
@@ -42,7 +48,14 @@
     function obtenerUrlChatbot() {
         const panel = document.getElementById("chatbotOffcanvas");
 
-        return panel?.dataset?.chatbotUrl || "/Chatbot/ConsultarChatbot";
+        return panel?.dataset?.chatbotUrl ||
+            "/ChatBot/ConsultarChatBot";
+    }
+
+    function obtenerUrlTicket() {
+        const panel = document.getElementById("chatbotOffcanvas");
+
+        return panel?.dataset?.ticketUrl || null;
     }
 
     async function consultarChatbot(idOpcion = null) {
@@ -65,7 +78,13 @@
         let datos = null;
 
         if (contenido.trim() !== "") {
-            datos = JSON.parse(contenido);
+            try {
+                datos = JSON.parse(contenido);
+            } catch {
+                throw new Error(
+                    "El servidor devolvió una respuesta no válida."
+                );
+            }
         }
 
         if (!response.ok) {
@@ -75,7 +94,8 @@
                     : datos?.mensaje;
 
             throw new Error(
-                mensaje || contenido || "No se pudo consultar el chatbot."
+                mensaje ||
+                "No se pudo consultar el chatbot."
             );
         }
 
@@ -104,6 +124,24 @@
             return;
         }
 
+        if (
+            typeof textoOpcion === "string" &&
+            textoOpcion.trim().toLowerCase() === "crear ticket"
+        ) {
+            ocultarErrorChatbot();
+
+            agregarMensajeChatbot(textoOpcion, true);
+
+            agregarMensajeChatbot(
+                "Voy a ayudarte a registrar un ticket. Completa los siguientes datos.",
+                false
+            );
+
+            mostrarFormularioTicket();
+
+            return;
+        }
+
         ocultarErrorChatbot();
 
         agregarMensajeChatbot(textoOpcion, true);
@@ -114,8 +152,8 @@
             const datos = await consultarChatbot(idOpcion);
 
             const seleccion =
-                datos.seleccion ||
-                datos.Seleccion;
+                datos?.seleccion ||
+                datos?.Seleccion;
 
             const respuesta = obtenerValor(
                 seleccion,
@@ -172,8 +210,10 @@
                 ["textoOpcion", "TextoOpcion", "texto_Opcion", "Texto_Opcion"]
             );
 
-            const boton =
-                crearBotonOpcion(idOpcion, textoOpcion);
+            const boton = crearBotonOpcion(
+                idOpcion,
+                textoOpcion
+            );
 
             contenedor.appendChild(boton);
         });
@@ -191,14 +231,23 @@
         const boton = document.createElement("button");
 
         boton.type = "button";
+
         boton.className =
             "btn btn-outline-success text-start rounded-3";
 
         const icono = document.createElement("i");
 
-        icono.className = "bi bi-chevron-right me-2";
+        if (
+            typeof textoOpcion === "string" &&
+            textoOpcion.trim().toLowerCase() === "crear ticket"
+        ) {
+            icono.className = "bi bi-ticket-perforated me-2";
+        } else {
+            icono.className = "bi bi-chevron-right me-2";
+        }
 
         boton.appendChild(icono);
+
         boton.appendChild(
             document.createTextNode(textoOpcion || "Opción")
         );
@@ -221,6 +270,7 @@
         icono.className = "bi bi-check-circle me-1";
 
         mensaje.appendChild(icono);
+
         mensaje.appendChild(
             document.createTextNode("No hay más opciones disponibles.")
         );
@@ -256,6 +306,7 @@
             );
 
             contenedor.appendChild(botonVolver);
+
         } else if (seleccion) {
             const botonVolver = crearBotonNavegacion(
                 "Volver",
@@ -295,6 +346,7 @@
         icono.className = claseIcono;
 
         boton.appendChild(icono);
+
         boton.appendChild(
             document.createTextNode(texto)
         );
@@ -312,15 +364,13 @@
         const contenedor =
             document.getElementById("chatbotMensajes");
 
-        const fila =
-            document.createElement("div");
+        const fila = document.createElement("div");
 
         fila.className = esUsuario
             ? "d-flex justify-content-end mb-3"
             : "d-flex justify-content-start mb-3";
 
-        const burbuja =
-            document.createElement("div");
+        const burbuja = document.createElement("div");
 
         burbuja.className = esUsuario
             ? "text-white rounded-4 px-3 py-2 shadow-sm chatbot-burbuja"
@@ -330,15 +380,13 @@
             burbuja.style.backgroundColor = "#0d2422";
         }
 
-        const icono =
-            document.createElement("i");
+        const icono = document.createElement("i");
 
         icono.className = esUsuario
             ? "bi bi-person-fill me-2"
             : "bi bi-robot me-2";
 
-        const contenido =
-            document.createElement("span");
+        const contenido = document.createElement("span");
 
         contenido.textContent = texto;
 
@@ -348,8 +396,7 @@
         fila.appendChild(burbuja);
         contenedor.appendChild(fila);
 
-        contenedor.scrollTop =
-            contenedor.scrollHeight;
+        contenedor.scrollTop = contenedor.scrollHeight;
     }
 
     function mostrarCargandoChatbot() {
@@ -358,29 +405,26 @@
 
         contenedor.replaceChildren();
 
-        const wrapper =
-            document.createElement("div");
+        const wrapper = document.createElement("div");
 
         wrapper.className =
             "d-flex align-items-center justify-content-center text-secondary py-2";
 
-        const spinner =
-            document.createElement("div");
+        const spinner = document.createElement("div");
 
         spinner.className =
             "spinner-border spinner-border-sm me-2";
 
         spinner.setAttribute("role", "status");
 
-        const textoAccesible =
-            document.createElement("span");
+        const textoAccesible = document.createElement("span");
 
         textoAccesible.className = "visually-hidden";
         textoAccesible.textContent = "Cargando...";
 
         spinner.appendChild(textoAccesible);
-
         wrapper.appendChild(spinner);
+
         wrapper.appendChild(
             document.createTextNode("Cargando opciones...")
         );
@@ -389,8 +433,7 @@
     }
 
     function mostrarErrorChatbot(mensaje) {
-        const alerta =
-            document.getElementById("chatbotError");
+        const alerta = document.getElementById("chatbotError");
 
         alerta.textContent =
             mensaje || "Ocurrió un error al cargar el chatbot.";
@@ -402,23 +445,235 @@
 
         contenedor.replaceChildren();
 
-        const boton =
-            crearBotonNavegacion(
-                "Reintentar",
-                "bi bi-arrow-clockwise me-1",
-                "btn btn-danger rounded-3",
-                cargarChatbotMenuPrincipal
-            );
+        const boton = crearBotonNavegacion(
+            "Reintentar",
+            "bi bi-arrow-clockwise me-1",
+            "btn btn-danger rounded-3",
+            cargarChatbotMenuPrincipal
+        );
 
         contenedor.appendChild(boton);
     }
 
     function ocultarErrorChatbot() {
-        const alerta =
-            document.getElementById("chatbotError");
+        const alerta = document.getElementById("chatbotError");
 
         alerta.textContent = "";
         alerta.classList.add("d-none");
+    }
+
+    function mostrarFormularioTicket() {
+        const contenedor =
+            document.getElementById("chatbotOpciones");
+
+        contenedor.innerHTML = `
+            <form id="formTicketChatbot" class="d-grid gap-2">
+
+                <h6 class="mb-1">
+                    <i class="bi bi-ticket-perforated me-2"></i>
+                    Registrar ticket
+                </h6>
+
+                <label for="ticketTitulo" class="form-label mb-0">
+                    Título de la solicitud
+                </label>
+
+                <input type="text"
+                       id="ticketTitulo"
+                       class="form-control"
+                       maxlength="150"
+                       required
+                       placeholder="Título del problema">
+
+                <small class="text-muted">
+                    Máximo 150 caracteres
+                </small>
+
+                <label for="ticketDescripcion" class="form-label mb-0">
+                    Descripción
+                </label>
+
+                <textarea id="ticketDescripcion"
+                          class="form-control"
+                          rows="3"
+                          maxlength="500"
+                          required
+                          placeholder="Describe tu solicitud"></textarea>
+
+                <small class="text-muted">
+                    Máximo 500 caracteres
+                </small>
+
+                <div id="ticketChatError"
+                     class="alert alert-danger d-none small py-2 mb-0">
+                </div>
+
+                <div class="d-flex gap-2 mt-2">
+
+                    <button type="submit"
+                            id="btnEnviarTicket"
+                            class="btn btn-success flex-grow-1">
+                        <i class="bi bi-send me-1"></i>
+                        Enviar ticket
+                    </button>
+
+                    <button type="button"
+                            id="btnCancelarTicket"
+                            class="btn btn-outline-secondary">
+                        Cancelar
+                    </button>
+
+                </div>
+            </form>
+        `;
+
+        document.getElementById("formTicketChatbot")
+            .addEventListener("submit", enviarTicketDesdeChatbot);
+
+        document.getElementById("btnCancelarTicket")
+            .addEventListener("click", cargarChatbotMenuPrincipal);
+
+        document.getElementById("ticketTitulo").focus();
+    }
+
+    async function enviarTicketDesdeChatbot(event) {
+        event.preventDefault();
+
+        if (enviandoTicket) {
+            return;
+        }
+
+        const titulo =
+            document.getElementById("ticketTitulo").value.trim();
+
+        const descripcion =
+            document.getElementById("ticketDescripcion").value.trim();
+
+        const errorElemento =
+            document.getElementById("ticketChatError");
+
+        const boton =
+            document.getElementById("btnEnviarTicket");
+
+        const mostrarErrorTicket = function (mensaje) {
+            errorElemento.textContent = mensaje;
+            errorElemento.classList.remove("d-none");
+        };
+
+        errorElemento.classList.add("d-none");
+
+        if (!titulo || !descripcion) {
+            mostrarErrorTicket("Completa todos los campos.");
+            return;
+        }
+
+        if (titulo.length > 150) {
+            mostrarErrorTicket(
+                "El título no puede superar los 150 caracteres."
+            );
+            return;
+        }
+
+        if (descripcion.length > 500) {
+            mostrarErrorTicket(
+                "La descripción no puede superar los 500 caracteres."
+            );
+            return;
+        }
+
+        const urlTicket = obtenerUrlTicket();
+
+        if (!urlTicket) {
+            mostrarErrorTicket(
+                "No se configuró la URL para registrar tickets."
+            );
+            return;
+        }
+
+        const panel =
+            document.getElementById("chatbotOffcanvas");
+
+        const token = panel.querySelector(
+            'input[name="__RequestVerificationToken"]'
+        )?.value;
+
+        if (!token) {
+            mostrarErrorTicket(
+                "No se encontró el token de seguridad."
+            );
+            return;
+        }
+
+        enviandoTicket = true;
+        boton.disabled = true;
+
+        const textoOriginal = boton.innerHTML;
+
+        boton.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2"
+                  role="status"></span>
+            Enviando...
+        `;
+
+        try {
+            const response = await fetch(urlTicket, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "RequestVerificationToken": token
+                },
+                body: JSON.stringify({
+                    titulo: titulo,
+                    descripcion: descripcion
+                })
+            });
+
+            const contenido = await response.text();
+
+            let datos = null;
+
+            try {
+                datos = contenido ? JSON.parse(contenido) : null;
+            } catch {
+                throw new Error(
+                    "El servidor devolvió una respuesta no válida."
+                );
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    datos?.mensaje ||
+                    "No se pudo registrar el ticket."
+                );
+            }
+
+            if (!datos?.idTicket) {
+                throw new Error(
+                    "La API no devolvió el número del ticket."
+                );
+            }
+
+            agregarMensajeChatbot(
+                "Solicitud enviada correctamente.",
+                true
+            );
+
+            agregarMensajeChatbot(
+                `Tu ticket #${datos.idTicket} fue registrado correctamente. Tu solicitud será revisada por la administración.`,
+                false
+            );
+
+            await cargarChatbotMenuPrincipal();
+
+        } catch (error) {
+            mostrarErrorTicket(error.message);
+
+        } finally {
+            enviandoTicket = false;
+            boton.disabled = false;
+            boton.innerHTML = textoOriginal;
+        }
     }
 
     function reiniciarChatbot() {
@@ -433,14 +688,12 @@
         if (contenedorMensajes) {
             contenedorMensajes.replaceChildren();
 
-            const fila =
-                document.createElement("div");
+            const fila = document.createElement("div");
 
             fila.className =
                 "d-flex justify-content-start mb-3";
 
-            const burbuja =
-                document.createElement("div");
+            const burbuja = document.createElement("div");
 
             burbuja.className =
                 "bg-white border rounded-4 px-3 py-2 shadow-sm chatbot-burbuja";
@@ -490,4 +743,5 @@
             btnSubir.classList.remove("d-none");
         }
     }
+
 })();

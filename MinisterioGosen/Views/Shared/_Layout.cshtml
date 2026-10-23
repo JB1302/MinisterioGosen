@@ -758,11 +758,16 @@
             <i class="bi bi-chat-dots fs-4"></i>
         </button>
 
+
         <div class="offcanvas offcanvas-end"
              tabindex="-1"
              id="chatbotOffcanvas"
              data-chatbot-url="@Url.Action("ConsultarChatbot", "Chatbot")"
+             data-ticket-url="@Url.Action("RegistrarTicket", "Chatbot")"
              aria-labelledby="chatbotOffcanvasLabel">
+
+            @Html.AntiForgeryToken()
+
 
             <div class="offcanvas-header text-white"
                  style="background-color: #0d2422;">
@@ -868,7 +873,6 @@
     }
 
     <script src="~/js/chatbot-floating.js"></script>
-    <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 
