@@ -1501,4 +1501,128 @@ AS $$
     ORDER BY m.descripcion_ministerio, u.nombre;
 $$;
 
+-- Procedimientos para manejo de tickets
+CREATE OR REPLACE PROCEDURE spCrearTicket(
+    p_id_requestor integer,
+    p_titulo varchar(150),
+    p_descripcion varchar(500),
+    p_id_asignee integer,
+    OUT p_id_ticket integer
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Validar que el requestor existe
+    IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_requestor) THEN
+        RAISE EXCEPTION 'El usuario solicitante no existe';
+    END IF;
+
+    -- Validar que el asignee existe si se proporciona
+    IF p_id_asignee IS NOT NULL AND p_id_asignee > 0 THEN
+        IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_asignee) THEN
+            RAISE EXCEPTION 'El usuario asignado no existe';
+        END IF;
+    END IF;
+
+    -- Crear el ticket
+    INSERT INTO tickets (id_requestor, titulo, descripcion, estado, id_asignee, fecha_creacion)
+    VALUES (p_id_requestor, p_titulo, p_descripcion, 'Abierto'::ticket_estado, NULLIF(p_id_asignee, 0), CURRENT_TIMESTAMP)
+    RETURNING id_ticket INTO p_id_ticket;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION fnObtenerTicketsPorUsuario(p_id_usuario integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_asignee integer,
+    nombre_asignee varchar(100),
+    fecha_creacion timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::text,
+        t.id_assignee,
+        u_assig.nombre,
+        t.fecha_creacion
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_requestor = p_id_usuario OR t.id_assignee = p_id_usuario
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION fnObtenerTicketPorId(p_id_ticket integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    fecha_creacion timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::text,
+        t.id_assignee,
+        u_assig.nombre,
+        t.fecha_creacion
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_ticket = p_id_ticket;
+$$;
+
+CREATE OR REPLACE PROCEDURE spActualizarTicket(
+    p_id_ticket integer,
+    p_estado varchar(20),
+    p_id_assignee integer DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Validar que el ticket existe
+    IF NOT EXISTS (SELECT 1 FROM tickets WHERE id_ticket = p_id_ticket) THEN
+        RAISE EXCEPTION 'El ticket no existe';
+    END IF;
+
+    -- Validar que el estado es válido
+    IF p_estado NOT IN ('Abierto', 'En Progreso', 'Cerrado', 'Cancelado') THEN
+        RAISE EXCEPTION 'Estado inválido: %', p_estado;
+    END IF;
+
+    -- Validar que el asignee existe si se proporciona
+    IF p_id_assignee IS NOT NULL AND p_id_assignee > 0 THEN
+        IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_assignee) THEN
+            RAISE EXCEPTION 'El usuario asignado no existe';
+        END IF;
+    END IF;
+
+    -- Actualizar el ticket
+    UPDATE tickets
+    SET estado = p_estado::ticket_estado,
+        id_assignee = NULLIF(p_id_assignee, 0)
+    WHERE id_ticket = p_id_ticket;
+END;
+$$;
+
 COMMIT;

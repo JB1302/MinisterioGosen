@@ -324,4 +324,155 @@
         alerta.textContent = "";
         alerta.classList.add("d-none");
     }
-})();
+
+    // Funciones para manejo de tickets
+    let datosTicketActual = {
+        titulo: "",
+        descripcion: "",
+        idUsuario: null
+    };
+
+    async function iniciarRegistroTicket(idUsuario) {
+        datosTicketActual.idUsuario = idUsuario;
+        datosTicketActual.titulo = "";
+        datosTicketActual.descripcion = "";
+
+        ocultarError();
+        agregarMensaje("Voy a ayudarte a registrar un ticket. Por favor, proporciona los siguientes datos:", false);
+        mostrarFormularioTicket();
+    }
+
+    function mostrarFormularioTicket() {
+        const contenedor = document.getElementById("contenedorOpciones");
+
+        contenedor.innerHTML = `
+            <div class="mb-3">
+                <label for="ticketTitulo" class="form-label">Título del ticket (máximo 150 caracteres)</label>
+                <input type="text" class="form-control" id="ticketTitulo" placeholder="Resumen breve del problema" maxlength="150">
+                <small class="text-muted"><span id="charCountTitulo">0</span>/150</small>
+            </div>
+            <div class="mb-3">
+                <label for="ticketDescripcion" class="form-label">Descripción (máximo 500 caracteres)</label>
+                <textarea class="form-control" id="ticketDescripcion" rows="4" placeholder="Describe con detalle tu solicitud" maxlength="500"></textarea>
+                <small class="text-muted"><span id="charCountDesc">0</span>/500</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-success rounded-3 flex-grow-1" id="btnEnviarTicket">
+                    <i class="bi bi-check-circle me-1"></i>Enviar Ticket
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-3" id="btnCancelarTicket">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+            </div>
+        `;
+
+        const inputTitulo = document.getElementById("ticketTitulo");
+        const inputDesc = document.getElementById("ticketDescripcion");
+        const btnEnviar = document.getElementById("btnEnviarTicket");
+        const btnCancelar = document.getElementById("btnCancelarTicket");
+
+        // Contador de caracteres
+        inputTitulo.addEventListener("input", function() {
+            document.getElementById("charCountTitulo").textContent = this.value.length;
+            datosTicketActual.titulo = this.value;
+        });
+
+        inputDesc.addEventListener("input", function() {
+            document.getElementById("charCountDesc").textContent = this.value.length;
+            datosTicketActual.descripcion = this.value;
+        });
+
+        btnEnviar.addEventListener("click", function() {
+            enviarTicket();
+        });
+
+        btnCancelar.addEventListener("click", function() {
+            cargarMenuPrincipal();
+        });
+
+        inputTitulo.focus();
+    }
+
+    async function enviarTicket() {
+        const error = validarDatosTicket();
+
+        if (error) {
+            mostrarError(error);
+            return;
+        }
+
+        ocultarError();
+        mostrarCargando();
+
+        try {
+            // Obtener la URL base de la API
+            const apiUrl = document.body.dataset.apiUrl || "/api/ChatBot/RegistrarTicketDesdeChat";
+
+            const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    idRequestor: datosTicketActual.idUsuario,
+                    titulo: datosTicketActual.titulo.trim(),
+                    descripcion: datosTicketActual.descripcion.trim(),
+                    idAsignee: null
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.idTicket) {
+                agregarMensaje(`¡Excelente! Tu solicitud ha sido registrada con éxito. Tu número de ticket es: #${data.idTicket}`, false);
+                agregarMensaje(data.mensaje, false);
+                mostrarOpcionesPostTicket();
+            } else {
+                throw new Error(data.mensaje || "No se pudo registrar el ticket");
+            }
+        } catch (error) {
+            agregarMensaje("No fue posible registrar tu solicitud. Por favor intenta nuevamente.", false);
+            mostrarError(error.message);
+            mostrarFormularioTicket();
+        }
+    }
+
+    function validarDatosTicket() {
+        if (!datosTicketActual.titulo || datosTicketActual.titulo.trim().length === 0) {
+            return "El título del ticket es obligatorio";
+        }
+
+        if (datosTicketActual.titulo.length > 150) {
+            return "El título no puede exceder 150 caracteres";
+        }
+
+        if (!datosTicketActual.descripcion || datosTicketActual.descripcion.trim().length === 0) {
+            return "La descripción del ticket es obligatoria";
+        }
+
+        if (datosTicketActual.descripcion.length > 500) {
+            return "La descripción no puede exceder 500 caracteres";
+        }
+
+        if (!datosTicketActual.idUsuario || datosTicketActual.idUsuario <= 0) {
+            return "El ID del usuario no es válido";
+        }
+
+        return null;
+    }
+
+    function mostrarOpcionesPostTicket() {
+        const contenedor = document.getElementById("contenedorOpciones");
+
+        contenedor.innerHTML = `
+            <div class="text-center">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+            </div>
+        `;
+
+        setTimeout(() => {
+            cargarMenuPrincipal();
+        }, 2000);
+    }
+});
