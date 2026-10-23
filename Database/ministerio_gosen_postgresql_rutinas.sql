@@ -1512,21 +1512,40 @@ CREATE OR REPLACE PROCEDURE spCrearTicket(
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    -- Validar que el requestor existe
-    IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_requestor) THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE id_usuario = p_id_requestor
+    ) THEN
         RAISE EXCEPTION 'El usuario solicitante no existe';
     END IF;
 
-    -- Validar que el asignee existe si se proporciona
     IF p_id_asignee IS NOT NULL AND p_id_asignee > 0 THEN
-        IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_asignee) THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM usuario
+            WHERE id_usuario = p_id_asignee
+        ) THEN
             RAISE EXCEPTION 'El usuario asignado no existe';
         END IF;
     END IF;
 
-    -- Crear el ticket
-    INSERT INTO tickets (id_requestor, titulo, descripcion, estado, id_asignee, fecha_creacion)
-    VALUES (p_id_requestor, p_titulo, p_descripcion, 'Abierto'::ticket_estado, NULLIF(p_id_asignee, 0), CURRENT_TIMESTAMP)
+    INSERT INTO tickets (
+        id_requestor,
+        titulo,
+        descripcion,
+        estado,
+        id_assignee,
+        fecha_creacion
+    )
+    VALUES (
+        p_id_requestor,
+        p_titulo,
+        p_descripcion,
+        'Abierto'::ticket_estado,
+        NULLIF(p_id_asignee, 0),
+        CURRENT_TIMESTAMP
+    )
     RETURNING id_ticket INTO p_id_ticket;
 END;
 $$;

@@ -110,18 +110,24 @@ namespace MinisterioGosenAPI.Controllers
                 );
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@p_id_requestor", request.IdRequestor);
-                parameters.Add("@p_titulo", request.Titulo);
-                parameters.Add("@p_descripcion", request.Descripcion);
-                parameters.Add("@p_id_assignee", request.IdAssignee ?? (object)DBNull.Value);
-                parameters.Add("@p_id_ticket", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                await context.ExecuteAsync(
-                    "CALL spCrearTicket(@p_id_requestor, @p_titulo, @p_descripcion, @p_id_assignee, @p_id_ticket)",
-                    parameters
-                );
-
-                var idTicket = parameters.Get<int>("@p_id_ticket");
+                var idTicket = await context.QuerySingleAsync<int>(
+                                """
+                                    CALL spcrearticket(
+                                        @p_id_requestor,
+                                        @p_titulo,
+                                        @p_descripcion,
+                                        @p_id_assignee,
+                                        NULL
+                                    )
+                                """,
+                                new
+                                {
+                                    p_id_requestor = request.IdRequestor,
+                                    p_titulo = request.Titulo.Trim(),
+                                    p_descripcion = request.Descripcion.Trim(),
+                                    p_id_assignee = request.IdAssignee
+                                }
+                            );
 
                 if (idTicket > 0)
                 {
