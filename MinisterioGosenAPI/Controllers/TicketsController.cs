@@ -80,6 +80,36 @@ namespace MinisterioGosenAPI.Controllers
         }
 
         [HttpGet]
+        [Route("ListarTickets")]
+        public async Task<IActionResult> ListarTickets()
+        {
+            try
+            {
+                await using var context = new NpgsqlConnection(
+                    _configuration.GetConnectionString("DefaultConnection")
+                );
+
+                var tickets = await context.QueryAsync<TicketResponseModel>(
+                    "SELECT * FROM fnListarTickets()"
+                );
+
+                return Ok(tickets);
+            }
+            catch (PostgresException ex)
+            {
+                return BadRequest(ex.MessageText);
+            }
+            catch (NpgsqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet]
         [Route("ObtenerTicketsPorUsuario")]
         public async Task<IActionResult> ObtenerTicketsPorUsuario(int idUsuario)
         {
@@ -182,6 +212,13 @@ namespace MinisterioGosenAPI.Controllers
                 return BadRequest($"Estado inválido. Estados válidos: {string.Join(", ", estadosValidos)}");
             }
 
+            var respuesta = request.Respuesta?.Trim();
+
+            if (respuesta is { Length: > 500 })
+            {
+                return BadRequest("La respuesta no puede superar 500 caracteres");
+            }
+
             try
             {
                 await using var context = new NpgsqlConnection(
@@ -189,12 +226,13 @@ namespace MinisterioGosenAPI.Controllers
                 );
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@p_id_ticket", request.IdTicket);
-                parameters.Add("@p_estado", request.Estado);
-                parameters.Add("@p_id_assignee", request.IdAssignee ?? (object)DBNull.Value);
+                parameters.Add("@p_id_ticket", request.IdTicket, DbType.Int32);
+                parameters.Add("@p_estado", request.Estado, DbType.String);
+                parameters.Add("@p_id_assignee", request.IdAssignee, DbType.Int32);
+                parameters.Add("@p_respuesta", respuesta, DbType.String);
 
                 await context.ExecuteAsync(
-                    "CALL spActualizarTicket(@p_id_ticket, @p_estado, @p_id_assignee)",
+                    "CALL spActualizarTicket(@p_id_ticket, @p_estado, @p_id_assignee, @p_respuesta)",
                     parameters
                 );
 

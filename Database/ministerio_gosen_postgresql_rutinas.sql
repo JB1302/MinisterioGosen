@@ -1,4 +1,3 @@
-
 BEGIN;
 
 -- Campo agregado en la version mas reciente del SQL Server original.
@@ -1550,38 +1549,9 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION fnObtenerTicketsPorUsuario(p_id_usuario integer)
-RETURNS TABLE (
-    id_ticket integer,
-    id_requestor integer,
-    nombre_requestor varchar(100),
-    titulo varchar(150),
-    descripcion varchar(500),
-    estado varchar(20),
-    id_asignee integer,
-    nombre_asignee varchar(100),
-    fecha_creacion timestamp
-)
-LANGUAGE sql
-AS $$
-    SELECT 
-        t.id_ticket,
-        t.id_requestor,
-        u_req.nombre,
-        t.titulo,
-        t.descripcion,
-        t.estado::text,
-        t.id_assignee,
-        u_assig.nombre,
-        t.fecha_creacion
-    FROM tickets t
-    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
-    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
-    WHERE t.id_requestor = p_id_usuario OR t.id_assignee = p_id_usuario
-    ORDER BY t.fecha_creacion DESC;
-$$;
+DROP FUNCTION IF EXISTS fnListarTickets();
 
-CREATE OR REPLACE FUNCTION fnObtenerTicketPorId(p_id_ticket integer)
+CREATE FUNCTION fnListarTickets()
 RETURNS TABLE (
     id_ticket integer,
     id_requestor integer,
@@ -1591,36 +1561,124 @@ RETURNS TABLE (
     estado varchar(20),
     id_assignee integer,
     nombre_assignee varchar(100),
-    fecha_creacion timestamp
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
 )
 LANGUAGE sql
 AS $$
-    SELECT 
+    SELECT
         t.id_ticket,
         t.id_requestor,
         u_req.nombre,
         t.titulo,
         t.descripcion,
-        t.estado::text,
+        t.estado::varchar(20),
         t.id_assignee,
         u_assig.nombre,
-        t.fecha_creacion
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
     FROM tickets t
     JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
     LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
-    WHERE t.id_ticket = p_id_ticket;
+    ORDER BY t.fecha_creacion DESC;
 $$;
 
-CREATE OR REPLACE PROCEDURE spActualizarTicket(
+DROP FUNCTION IF EXISTS fnObtenerTicketsPorUsuario(integer);
+
+CREATE FUNCTION fnObtenerTicketsPorUsuario(p_id_usuario integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::varchar(20),
+        t.id_assignee,
+        u_assig.nombre,
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_requestor = p_id_usuario OR t.id_assignee = p_id_usuario
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+DROP FUNCTION IF EXISTS fnObtenerTicketPorId(integer);
+
+CREATE FUNCTION fnObtenerTicketPorId(p_id_ticket integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::varchar(20),
+        t.id_assignee,
+        u_assig.nombre,
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_ticket = p_id_ticket
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+DROP PROCEDURE IF EXISTS spActualizarTicket(integer, varchar, integer);
+DROP PROCEDURE IF EXISTS spActualizarTicket(integer, varchar, integer, varchar);
+
+CREATE PROCEDURE spActualizarTicket(
     p_id_ticket integer,
     p_estado varchar(20),
-    p_id_assignee integer DEFAULT NULL
+    p_id_assignee integer DEFAULT NULL,
+    p_respuesta varchar(500) DEFAULT NULL
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_respuesta varchar(500);
 BEGIN
     -- Validar que el ticket existe
-    IF NOT EXISTS (SELECT 1 FROM tickets WHERE id_ticket = p_id_ticket) THEN
+    SELECT respuesta INTO v_respuesta
+      FROM tickets
+     WHERE id_ticket = p_id_ticket;
+
+    IF NOT FOUND THEN
         RAISE EXCEPTION 'El ticket no existe';
     END IF;
 
@@ -1636,10 +1694,20 @@ BEGIN
         END IF;
     END IF;
 
-    -- Actualizar el ticket
+    -- Si no llega una respuesta nueva, se conserva la anterior
+    v_respuesta := COALESCE(NULLIF(trim(p_respuesta), ''), v_respuesta);
+
+    IF p_estado = 'Cerrado' AND v_respuesta IS NULL THEN
+        RAISE EXCEPTION 'Debe registrar una respuesta para cerrar el ticket';
+    END IF;
+
+    -- Actualizar el ticket (si no llega asignado se conserva el actual)
     UPDATE tickets
     SET estado = p_estado::ticket_estado,
-        id_assignee = NULLIF(p_id_assignee, 0)
+        id_assignee = COALESCE(NULLIF(p_id_assignee, 0), id_assignee),
+        respuesta = v_respuesta,
+        fecha_cierre = CASE WHEN p_estado IN ('Cerrado', 'Cancelado')
+                            THEN CURRENT_TIMESTAMP ELSE NULL END
     WHERE id_ticket = p_id_ticket;
 END;
 $$;

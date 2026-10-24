@@ -1,0 +1,163 @@
+﻿@model MinisterioGosen.Models.TicketModel
+
+@{
+    ViewData["Title"] = "Atender ticket";
+
+    var yaFinalizado = Model.Estado == "Cerrado" || Model.Estado == "Cancelado";
+}
+
+<div class="container py-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                Atender ticket #@Model.IdTicket
+            </h2>
+            <p class="text-muted mb-0">
+                Actualice el estado del ticket y registre la respuesta para el solicitante.
+            </p>
+        </div>
+
+        <a asp-controller="Tickets"
+           asp-action="Index"
+           class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+
+            @if (ViewBag.Mensaje != null)
+            {
+                <div class="alert alert-warning d-flex align-items-center gap-2 rounded-3">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>@ViewBag.Mensaje</span>
+                </div>
+            }
+
+            @if (yaFinalizado)
+            {
+                <div class="alert alert-info d-flex align-items-center gap-2 rounded-3">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span>Este ticket ya se encuentra en estado @Model.Estado. Si lo guarda de nuevo, se actualizará.</span>
+                </div>
+            }
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Solicitante</p>
+                        <h6 class="fw-bold mb-0">
+                            @(string.IsNullOrEmpty(Model.NombreRequestor) ? $"Usuario #{Model.IdRequestor}" : Model.NombreRequestor)
+                        </h6>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Responsable actual</p>
+                        <h6 class="fw-bold mb-0">
+                            @(string.IsNullOrEmpty(Model.NombreAssignee) ? "Sin asignar" : Model.NombreAssignee)
+                        </h6>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Fecha de creación</p>
+                        <h6 class="fw-bold mb-0">@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</h6>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Estado actual</p>
+                        <h6 class="fw-bold mb-0">
+                            <partial name="_EstadoBadge" model="Model.Estado" />
+                        </h6>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Título</p>
+                        <h6 class="fw-bold mb-0">@Model.Titulo</h6>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="p-3 bg-light rounded-4">
+                        <p class="text-muted small mb-1">Descripción del solicitante</p>
+                        <div class="mb-0" style="white-space: pre-wrap;">@Model.Descripcion</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <form asp-controller="Tickets"
+                  asp-action="ConfirmarAtender"
+                  method="post"
+                  id="formAtenderTicket"
+                  novalidate>
+
+                <input asp-for="IdTicket" type="hidden" />
+
+                <div class="mb-3">
+                    <label for="Estado" class="form-label fw-semibold">
+                        <i class="bi bi-flag-fill me-1 text-muted"></i>
+                        Nuevo estado
+                    </label>
+
+                    <select id="Estado" name="Estado" class="form-select rounded-3">
+                        <option value="Abierto" selected="@(Model.Estado == "Abierto")">Abierto</option>
+                        <option value="En Progreso" selected="@(Model.Estado == "En Progreso")">En Progreso</option>
+                        <option value="Cerrado" selected="@(Model.Estado == "Cerrado")">Cerrado</option>
+                        <option value="Cancelado" selected="@(Model.Estado == "Cancelado")">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="Respuesta" class="form-label fw-semibold">
+                        <i class="bi bi-reply-fill me-1 text-muted"></i>
+                        Respuesta al solicitante
+                    </label>
+
+                    <textarea asp-for="Respuesta"
+                              class="form-control rounded-3"
+                              rows="5"
+                              maxlength="500"
+                              placeholder="Escriba la solución o el seguimiento del ticket. Es obligatoria para cerrarlo."></textarea>
+
+                    <div class="invalid-feedback" id="errorRespuesta">
+                        Debe registrar una respuesta para cerrar el ticket.
+                    </div>
+
+                    <div class="form-text">
+                        Al guardar, usted quedará como responsable del ticket.
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-controller="Tickets"
+                       asp-action="Index"
+                       class="btn btn-outline-secondary rounded-pill px-4">
+                        Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-success rounded-pill px-4">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Guardar cambios
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+<script src="~/js/atenderTicket.js"></script>

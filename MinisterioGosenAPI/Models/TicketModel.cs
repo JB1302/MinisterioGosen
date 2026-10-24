@@ -8,7 +8,9 @@ namespace MinisterioGosenAPI.Models
         public string Descripcion { get; set; } = string.Empty;
         public string Estado { get; set; } = "Abierto";
         public int? IdAssignee { get; set; }
+        public string? Respuesta { get; set; }
         public DateTime FechaCreacion { get; set; }
+        public DateTime? FechaCierre { get; set; }
     }
 
     public class CrearTicketRequestModel
@@ -24,6 +26,7 @@ namespace MinisterioGosenAPI.Models
         public int IdTicket { get; set; }
         public string Estado { get; set; } = string.Empty;
         public int? IdAssignee { get; set; }
+        public string? Respuesta { get; set; }
     }
 
     public class TicketResponseModel
@@ -36,6 +39,8 @@ namespace MinisterioGosenAPI.Models
         public string Estado { get; set; } = "Abierto";
         public int? IdAssignee { get; set; }
         public string? NombreAssignee { get; set; }
+        public string? Respuesta { get; set; }
         public DateTime FechaCreacion { get; set; }
+        public DateTime? FechaCierre { get; set; }
     }
 }
