@@ -30,8 +30,8 @@
         verdeOscuro: "#07574f",
         verdePrincipal: "#168c62",
         verdeClaro: "#72b8a3",
-        azul: "#146ef5",
-        azulClaro: "#78a9f8",
+        azul: "#0b8277",
+        azulClaro: "#75b9ae",
         dorado: "#d19a00",
         amarillo: "#f2c94c",
         gris: "#9aa8a5",
@@ -295,7 +295,7 @@
                         }),
 
                         backgroundColor:
-                            "rgba(20, 110, 245, 0.78)",
+                            "rgba(11, 130, 119, 0.78)",
 
                         borderColor: colores.azul,
                         borderWidth: 1,
@@ -321,8 +321,7 @@
                         },
 
                         grid: {
-                            color:
-                                "rgba(20, 110, 245, 0.08)"
+                            color: "rgba(11, 130, 119, 0.08)"
                         }
                     },
 

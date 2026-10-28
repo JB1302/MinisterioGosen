@@ -1,6 +1,6 @@
 ﻿@model UsuarioModel
 @{
-    ViewData["Title"] = "Registro";
+    ViewData["Title"] = "Crear cuenta";
     Layout = "_LayoutExterno";
 }
 
@@ -9,7 +9,7 @@
     <div class="container py-5">
         <div class="row g-5">
             <div class="col-lg-6 h-100 wow fadeInUp" data-wow-delay="0.2s">
-                <div class="text-center mx-auto pb-1" style="max-width: 800px;">
+               <div class="text-center mx-auto pb-4" style="max-width: 800px;">
                     <h4 class="text-uppercase text-primary">Ministerio Gosén</h4>
                     <h1 class="display-3 text-capitalize mb-3">Crear Cuenta</h1>
                 </div>
@@ -21,46 +21,72 @@
                 }
                 <form id="Registrar" asp-action="Registrar" asp-controller="Home" method="post">
                     <div class="row g-4">
-                        <div class="col-lg-12 ">
-                            <div class="form-floating">
-                                <input asp-for="Identificacion" type="text" class="form-control border-0" placeholder="Identificación">
-                                <label>Identificación</label>
-                            </div>
+
+                <div class="col-12">
+                    <div class="form-floating">
+                        <input asp-for="Identificacion"
+                                type="text"
+                                class="form-control border-0"
+                                placeholder="Identificación">
+                        <label asp-for="Identificacion">Identificación</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-floating">
+                        <input asp-for="Nombre"
+                               type="text"
+                               class="form-control border-0"
+                               placeholder="Nombre"
+                               autocomplete="name">
+                        <label asp-for="Nombre">Nombre</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-floating">
+                        <input asp-for="Correo"
+                               type="email"
+                               class="form-control border-0"
+                               placeholder="Correo Electrónico"
+                               autocomplete="email">
+                        <label asp-for="Correo">Correo Electrónico</label>
+                    </div>
+                </div>
+
+
+                <div class="col-12">
+                    <div class="form-floating">
+                        <input asp-for="Contrasena"
+                               type="password"
+                               class="form-control border-0"
+                               placeholder="Contraseña"
+                               autocomplete="new-password">
+                        <label asp-for="Contrasena">Contraseña</label>
+                    </div>
+                </div>
+
+                       <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100 py-3">
+                                Crear cuenta
+                            </button>
                         </div>
 
-                        <div class="col-lg-12 ">
-                            <div class="form-floating">
-                                <input asp-for="Nombre" type="text" class="form-control border-0" placeholder="Nombre">
-                                <label>Nombre</label>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-12 ">
-                            <div class="form-floating">
-                                <input asp-for="Correo" type="text" class="form-control border-0" placeholder="Correo Electrónico">
-                                <label>Correo Electrónico</label>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-12 ">
-                            <div class="form-floating">
-                                <input asp-for="Contrasena" type="password" class="form-control border-0" placeholder="Contraseña">
-                                <label for="password">Contraseña</label>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary w-100 py-3">Iniciar Sesión</button>
-                        </div>
                     </div>
                 </form>
-                <div class="text-center mt-2 row g-1">
-                    <p class="text-gray-600">
-                        ¿Ya tienes una cuenta? <a asp-action="Index" asp-controller="Home" class="font-bold">
-                        Iniciar Sesión
-                    </a>
-                </p>
-            </div>
+
+
+                <div class="text-center mt-4">
+                    <p class="text-body-secondary mb-0">
+                        ¿Ya tienes una cuenta?
+                        <a asp-action="Index"
+                           asp-controller="Home"
+                           class="fw-semibold">
+                            Iniciar sesión
+                        </a>
+                    </p>
+                </div>
+
         </div>
         <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.4s">
             <div class="row g-4">
@@ -69,7 +95,7 @@
                         <i class="fas fa-map-marker-alt fa-2x text-secondary me-4"></i>
                         <div>
                             <h4>Dirección</h4>
-                            <p class="mb-0">Av. Principal de la Ciudad, Edicificio Gosén, Nivel 1</p>
+                            <p class="mb-0">Av. Principal de la Ciudad, Edificio Gosén, Nivel 1</p>
                         </div>
                     </div>
                 </div>

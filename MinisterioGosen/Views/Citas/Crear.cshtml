@@ -27,7 +27,7 @@
     </div>
 
     <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-body p-4">
+        <div class="card-body p-3 p-md-4">
 
             @if (ViewBag.Mensaje != null)
             {
@@ -37,7 +37,9 @@
                 </div>
             }
 
-            <div id="mensajeValidacion" class="alert alert-danger d-none">
+            <div id="mensajeValidacion"
+                 class="alert alert-danger d-none rounded-3"
+                 role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-1"></i>
                 <span id="textoValidacion"></span>
             </div>
@@ -48,23 +50,28 @@
                   id="formCita"
                   novalidate>
 
-                <div class="row g-4">
+                <div class="row g-3 g-md-4">
+
+                <div class="col-md-6">
+                    <label for="NombreSolicitante"
+                           class="form-label fw-semibold">
+                        <i class="bi bi-person-fill me-1 text-muted"></i>
+                        Solicitante
+                    </label>
+                    <input id="NombreSolicitante"
+                           value="@nombreUsuario"
+                           class="form-control rounded-3 bg-light"
+                           readonly />
+                </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-person-fill me-1 text-muted"></i>
-                            Solicitante
-                        </label>
-                        <input value="@nombreUsuario"
-                               class="form-control rounded-3"
-                               readonly />
-                    </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-calendar-date me-1 text-muted"></i>
-                            Fecha de la cita
-                        </label>
+                    <label asp-for="Fecha_Cita"
+                           class="form-label fw-semibold">
+                        <i class="bi bi-calendar-date me-1 text-muted"></i>
+                        Fecha de la cita
+                    </label>
+
                         <input asp-for="Fecha_Cita"
                                type="date"
                                class="form-control rounded-3"
@@ -89,11 +96,13 @@
                         </div>
                     </div>
 
-                    <div class="col-md-12">
-                        <label class="form-label fw-semibold">
+                    <div class="col-md-6">
+                        <label asp-for="Id_Usuario_Encargado"
+                               class="form-label fw-semibold">
                             <i class="bi bi-person-badge-fill me-1 text-muted"></i>
                             Encargado
                         </label>
+
                         <select asp-for="Id_Usuario_Encargado"
                                 asp-items="ViewBag.Encargados"
                                 class="form-select rounded-3">
@@ -132,7 +141,7 @@
 
                 <hr class="my-4" />
 
-                <div class="d-flex justify-content-end gap-2">
+                <div class="d-flex flex-column flex-sm-row justify-content-sm-end gap-2">
                     <a asp-controller="Home"
                        asp-action="Principal"
                        class="btn btn-outline-secondary rounded-pill px-4">
@@ -168,7 +177,7 @@
                         Su cita fue registrada correctamente en el sistema. Pronto será contactado por el encargado.
                     </p>
 
-                    <div class="d-flex justify-content-center gap-2">
+                    <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
                         <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
                             Agendar otra
                         </button>
@@ -182,9 +191,14 @@
         </div>
     </div>
 }
-<script src="~/js/citas.js"></script>
-<script src="~/js/agendarCita.js"></script>
 
+@section Scripts {
+    <script src="~/js/citas.js"
+            asp-append-version="true"></script>
+
+    <script src="~/js/agendarCita.js"
+            asp-append-version="true"></script>
+}
 
 @* @section Scripts {
     <script src="~/js/citas.js" asp-append-version="true"></script>
