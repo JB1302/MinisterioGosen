@@ -295,7 +295,7 @@
                         }),
 
                         backgroundColor:
-                            "rgba(20, 110, 245, 0.78)",
+                            "rgba(11, 130, 119, 0.78)",
 
                         borderColor: colores.azul,
                         borderWidth: 1,
@@ -321,8 +321,7 @@
                         },
 
                         grid: {
-                            color:
-                                "rgba(20, 110, 245, 0.08)"
+                            color: "rgba(11, 130, 119, 0.08)"
                         }
                     },
 

@@ -219,14 +219,14 @@
                     @if (esAdmin)
                     {
                         
-                            <!--Mis Tickets-->
+                            <!--Tickets-->
                       <a asp-controller="Tickets"
                            asp-action="Index"
                            class="nav-link fw-semibold px-lg-3
                             @(NavActivo("Tickets"))">
 
                             <i class="bi bi-ticket-detailed-fill me-1"></i>
-                            Mis tickets
+                            Tickets
                         </a>
                         <!-- GESTIÓN -->
                         <div class="nav-item dropdown">
@@ -361,34 +361,6 @@
 
                                             <small class="text-muted">
                                                 Consultar y atender citas
-                                            </small>
-                                        </div>
-                                    </a>
-                                </li>
-
-                                <!-- Tickets -->
-                                <li>
-                                    <a asp-controller="Tickets"
-                                       asp-action="Index"
-                                       class="dropdown-item d-flex align-items-center gap-3
-                                        py-2 rounded-2
-                                        @(NavActivo(
-                                          "Tickets",
-                                          "Index",
-                                          "Detalle",
-                                          "Atender",
-                                          "ConfirmarAtender"
-                                      ))">
-
-                                        <i class="bi bi-ticket-detailed-fill text-danger fs-5"></i>
-
-                                        <div>
-                                            <div class="fw-semibold">
-                                                Tickets
-                                            </div>
-
-                                            <small class="text-muted">
-                                                Consultar y atender tickets
                                             </small>
                                         </div>
                                     </a>
