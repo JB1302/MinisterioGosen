@@ -2127,4 +2127,299 @@ ON campana_destinatario
 FOR EACH ROW
 EXECUTE FUNCTION fnLogEnvioCampana();
 
+-- Procedimientos para manejo de tickets
+CREATE OR REPLACE PROCEDURE spCrearTicket(
+    p_id_requestor integer,
+    p_titulo varchar(150),
+    p_descripcion varchar(500),
+    p_id_asignee integer,
+    OUT p_id_ticket integer
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE id_usuario = p_id_requestor
+    ) THEN
+        RAISE EXCEPTION 'El usuario solicitante no existe';
+    END IF;
+
+    IF p_id_asignee IS NOT NULL AND p_id_asignee > 0 THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM usuario
+            WHERE id_usuario = p_id_asignee
+        ) THEN
+            RAISE EXCEPTION 'El usuario asignado no existe';
+        END IF;
+    END IF;
+
+    INSERT INTO tickets (
+        id_requestor,
+        titulo,
+        descripcion,
+        estado,
+        id_assignee,
+        fecha_creacion
+    )
+    VALUES (
+        p_id_requestor,
+        p_titulo,
+        p_descripcion,
+        'Abierto'::ticket_estado,
+        NULLIF(p_id_asignee, 0),
+        CURRENT_TIMESTAMP
+    )
+    RETURNING id_ticket INTO p_id_ticket;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS fnListarTickets();
+
+CREATE FUNCTION fnListarTickets()
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::varchar(20),
+        t.id_assignee,
+        u_assig.nombre,
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+DROP FUNCTION IF EXISTS fnObtenerTicketsPorUsuario(integer);
+
+CREATE FUNCTION fnObtenerTicketsPorUsuario(p_id_usuario integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::varchar(20),
+        t.id_assignee,
+        u_assig.nombre,
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_requestor = p_id_usuario OR t.id_assignee = p_id_usuario
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+DROP FUNCTION IF EXISTS fnObtenerTicketPorId(integer);
+
+CREATE FUNCTION fnObtenerTicketPorId(p_id_ticket integer)
+RETURNS TABLE (
+    id_ticket integer,
+    id_requestor integer,
+    nombre_requestor varchar(100),
+    titulo varchar(150),
+    descripcion varchar(500),
+    estado varchar(20),
+    id_assignee integer,
+    nombre_assignee varchar(100),
+    respuesta varchar(500),
+    fecha_creacion timestamp,
+    fecha_cierre timestamp
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        t.id_ticket,
+        t.id_requestor,
+        u_req.nombre,
+        t.titulo,
+        t.descripcion,
+        t.estado::varchar(20),
+        t.id_assignee,
+        u_assig.nombre,
+        t.respuesta,
+        t.fecha_creacion,
+        t.fecha_cierre
+    FROM tickets t
+    JOIN usuario u_req ON t.id_requestor = u_req.id_usuario
+    LEFT JOIN usuario u_assig ON t.id_assignee = u_assig.id_usuario
+    WHERE t.id_ticket = p_id_ticket
+    ORDER BY t.fecha_creacion DESC;
+$$;
+
+DROP PROCEDURE IF EXISTS spActualizarTicket(integer, varchar, integer);
+DROP PROCEDURE IF EXISTS spActualizarTicket(integer, varchar, integer, varchar);
+
+CREATE PROCEDURE spActualizarTicket(
+    p_id_ticket integer,
+    p_estado varchar(20),
+    p_id_assignee integer DEFAULT NULL,
+    p_respuesta varchar(500) DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_respuesta varchar(500);
+BEGIN
+    -- Validar que el ticket existe
+    SELECT respuesta INTO v_respuesta
+      FROM tickets
+     WHERE id_ticket = p_id_ticket;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El ticket no existe';
+    END IF;
+
+    -- Validar que el estado es válido
+    IF p_estado NOT IN ('Abierto', 'En Progreso', 'Cerrado', 'Cancelado') THEN
+        RAISE EXCEPTION 'Estado inválido: %', p_estado;
+    END IF;
+
+    -- Validar que el asignee existe si se proporciona
+    IF p_id_assignee IS NOT NULL AND p_id_assignee > 0 THEN
+        IF NOT EXISTS (SELECT 1 FROM usuario WHERE id_usuario = p_id_assignee) THEN
+            RAISE EXCEPTION 'El usuario asignado no existe';
+        END IF;
+    END IF;
+
+    -- Si no llega una respuesta nueva, se conserva la anterior
+    v_respuesta := COALESCE(NULLIF(trim(p_respuesta), ''), v_respuesta);
+
+    IF p_estado = 'Cerrado' AND v_respuesta IS NULL THEN
+        RAISE EXCEPTION 'Debe registrar una respuesta para cerrar el ticket';
+    END IF;
+
+    -- Actualizar el ticket (si no llega asignado se conserva el actual)
+    UPDATE tickets
+    SET estado = p_estado::ticket_estado,
+        id_assignee = COALESCE(NULLIF(p_id_assignee, 0), id_assignee),
+        respuesta = v_respuesta,
+        fecha_cierre = CASE WHEN p_estado IN ('Cerrado', 'Cancelado')
+                            THEN CURRENT_TIMESTAMP ELSE NULL END
+    WHERE id_ticket = p_id_ticket;
+END;
+$$;
+
+
+-- Automatic role synchronization:
+-- Admin (1) is never changed.
+-- Active membership => Miembro (3).
+-- No active memberships => Usuario (2).
+CREATE OR REPLACE FUNCTION fn_sincronizar_rol_miembro()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_id_usuario integer;
+BEGIN
+    v_id_usuario := COALESCE(NEW.id_usuario, OLD.id_usuario);
+
+    IF EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE id_usuario = v_id_usuario
+          AND id_rol = 1
+    ) THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM usuarios_ministerio um
+        WHERE um.id_usuario = v_id_usuario
+          AND COALESCE(um.estado, 'Activo') = 'Activo'
+          AND um.fecha_salida IS NULL
+    ) THEN
+        UPDATE usuario SET id_rol = 3 WHERE id_usuario = v_id_usuario;
+    ELSE
+        UPDATE usuario SET id_rol = 2 WHERE id_usuario = v_id_usuario;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER trg_sincronizar_rol_miembro
+AFTER INSERT OR UPDATE OR DELETE ON usuarios_ministerio
+FOR EACH ROW
+EXECUTE FUNCTION fn_sincronizar_rol_miembro();
+
+-- Asignación automática de tickets:
+-- Si se crea un ticket sin un responsable asignado, este se asigna al administrador activo (rol 1)
+-- que tenga la menor cantidad de tickets activos (Abiertos / En curso). En caso de empate, se elige el de menor ID.
+-- El solicitante nunca es asignado a su propio ticket. Si no hay ningún administrador disponible,
+-- el campo id_assignee permanece como NULL.
+CREATE OR REPLACE FUNCTION fnAsignarTicketAdminMenosCarga()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.id_assignee IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Serializa las inserciones concurrentes, de modo que dos tickets no asignen el mismo administrador.
+    PERFORM pg_advisory_xact_lock(hashtext('asignacion_tickets'));
+
+    SELECT u.id_usuario
+      INTO NEW.id_assignee
+      FROM usuario u
+      LEFT JOIN tickets t
+             ON t.id_assignee = u.id_usuario
+            AND t.estado IN ('Abierto', 'En Progreso')
+     WHERE u.id_rol = 1
+       AND u.estado = 'A'
+       AND u.id_usuario <> NEW.id_requestor
+     GROUP BY u.id_usuario
+     ORDER BY COUNT(t.id_ticket), u.id_usuario
+     LIMIT 1;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_asignar_ticket_admin
+BEFORE INSERT ON tickets
+FOR EACH ROW
+EXECUTE FUNCTION fnAsignarTicketAdminMenosCarga();
+
 COMMIT;

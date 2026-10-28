@@ -1,0 +1,259 @@
+﻿@model List<MinisterioGosen.Models.TicketModel>
+
+@{
+    var esAdmin = (ViewBag.EsAdmin as bool?) ?? false;
+
+    ViewData["Title"] = esAdmin ? "Tickets" : "Mis tickets";
+
+    var tickets = Model ?? new List<MinisterioGosen.Models.TicketModel>();
+
+    var totalTickets = tickets.Count;
+    var totalAbiertos = tickets.Count(x => x.Estado == "Abierto");
+    var totalEnProgreso = tickets.Count(x => x.Estado == "En Progreso");
+    var totalCerrados = tickets.Count(x => x.Estado == "Cerrado" || x.Estado == "Cancelado");
+}
+
+<div class="container py-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-ticket-detailed-fill me-2 text-primary"></i>
+                @(esAdmin ? "Tickets" : "Mis tickets")
+            </h2>
+            <p class="text-muted mb-0">
+                @if (esAdmin)
+                {
+                    <text>Administración y atención de los tickets de soporte.</text>
+                }
+                else
+                {
+                    <text>Seguimiento de los tickets que ha creado desde el asistente virtual.</text>
+                }
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="bi bi-ticket-detailed-fill text-primary fs-4"></i>
+                    </div>
+
+                    <div>
+                        <p class="text-muted mb-0 small">Total tickets</p>
+                        <h4 class="fw-bold mb-0">@totalTickets</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="bi bi-envelope-open-fill text-white fs-4"></i>
+                    </div>
+
+                    <div>
+                        <p class="text-muted mb-0 small">Abiertos</p>
+                        <h4 class="fw-bold mb-0">@totalAbiertos</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                        <i class="bi bi-arrow-repeat text-white fs-4"></i>
+                    </div>
+
+                    <div>
+                        <p class="text-muted mb-0 small">En progreso</p>
+                        <h4 class="fw-bold mb-0">@totalEnProgreso</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                        <i class="bi bi-check-circle-fill text-white fs-4"></i>
+                    </div>
+
+                    <div>
+                        <p class="text-muted mb-0 small">Cerrados o cancelados</p>
+                        <h4 class="fw-bold mb-0">@totalCerrados</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 px-4 pt-4 pb-2">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-list-ul me-2 text-primary"></i>
+                Listado de tickets
+            </h5>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+
+                <table id="tablaTickets"
+                       data-datatable
+                       class="table table-hover align-middle mb-0 w-100">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Código</th>
+                            <th>Fecha</th>
+                            <th>Título</th>
+                            <th>Solicitante</th>
+                            <th>Responsable</th>
+                            <th>Estado</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @if (tickets.Any())
+                        {
+                            foreach (var item in tickets)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="badge rounded-pill bg-secondary px-3 py-2">
+                                            #@item.IdTicket
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <div class="small">
+                                            <i class="bi bi-calendar-date me-1 text-primary"></i>
+                                            @item.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span class="fw-semibold text-truncate d-inline-block"
+                                              style="max-width: 260px;"
+                                              title="@item.Titulo">
+                                            @item.Titulo
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <div class="fw-semibold">
+                                            <i class="bi bi-person-fill me-1 text-muted"></i>
+                                            @(string.IsNullOrEmpty(item.NombreRequestor) ? $"Usuario #{item.IdRequestor}" : item.NombreRequestor)
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.NombreAssignee))
+                                        {
+                                            <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2">
+                                                <i class="bi bi-person-badge-fill me-1"></i>
+                                                @item.NombreAssignee
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Sin asignar</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        <partial name="EstadoBadge" model="item.Estado" />
+                                    </td>
+
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group" role="group">
+                                            <a asp-controller="Tickets"
+                                               asp-action="Detalle"
+                                               asp-route-id="@item.IdTicket"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Ver detalle">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </a>
+
+                                            @if (esAdmin && (item.Estado == "Abierto" || item.Estado == "En Progreso"))
+                                            {
+                                                <a asp-controller="Tickets"
+                                                   asp-action="Atender"
+                                                   asp-route-id="@item.IdTicket"
+                                                   class="btn btn-sm btn-outline-success"
+                                                   title="Atender">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <i class="bi bi-ticket-detailed text-muted display-4"></i>
+
+                                    <h5 class="fw-bold text-muted mt-3 mb-1">
+                                        No hay tickets registrados
+                                    </h5>
+
+                                    <p class="text-muted mb-3">
+                                        @if (esAdmin)
+                                        {
+                                            <text>Cuando los usuarios creen tickets, aparecerán en este listado.</text>
+                                        }
+                                        else
+                                        {
+                                            <text>Puede crear un ticket desde el asistente virtual.</text>
+                                        }
+                                    </p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["TicketAtendido"] != null)
+    {
+        <div class="modal fade" id="modalTicketAtendido" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-body text-center p-4">
+                        <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3"
+                             style="width: 72px; height: 72px;">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                        </div>
+
+                        <h5 class="fw-bold mb-2">¡Ticket actualizado!</h5>
+                        <p class="text-muted mb-4">
+                            Los cambios del ticket se guardaron correctamente.
+                        </p>
+
+                        <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">
+                            Aceptar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+<script src="~/js/ticketsIndex.js"></script>

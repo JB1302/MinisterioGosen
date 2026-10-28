@@ -727,6 +727,22 @@ BEGIN
         ('No puedo ingresar', 'Solicite apoyo a la administracion para revisar su usuario.', v_id_usuario_acceso, 3, true);
 END $$;
 
+
+INSERT INTO chat_bot_opciones
+    (texto_opcion, respuesta, id_opcion_padre, orden, activo)
+SELECT
+    'Crear ticket',
+    'Complete el formulario para registrar su solicitud.',
+    NULL,
+    8,
+    TRUE
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM chat_bot_opciones
+    WHERE texto_opcion = 'Crear ticket'
+      AND id_opcion_padre IS NULL
+);
+
 -- ============================================================================
 -- 14. PLANTILLAS DE CAMPAÑA
 -- ============================================================================
@@ -825,4 +841,5 @@ FROM usuario u
 JOIN rol r ON r.id_rol = u.id_rol
 GROUP BY r.descripcion
 ORDER BY r.descripcion;
+
 

@@ -1,0 +1,17 @@
+﻿@model string
+
+@{
+    var (clase, icono) = Model switch
+    {
+        "Abierto" => ("bg-warning text-dark", "bi-envelope-open-fill"),
+        "En Progreso" => ("bg-info text-dark", "bi-arrow-repeat"),
+        "Cerrado" => ("bg-success", "bi-check-circle-fill"),
+        "Cancelado" => ("bg-secondary", "bi-x-circle-fill"),
+        _ => ("bg-light text-dark", "bi-question-circle")
+    };
+}
+
+<span class="badge rounded-pill @clase px-3 py-2">
+    <i class="bi @icono me-1"></i>
+    @Model
+</span>

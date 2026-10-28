@@ -5,6 +5,10 @@ using MinisterioGosenAPI.Infrastructure;
 SqlMapper.AddTypeHandler(new PostgreSqlDateTimeHandler());
 SqlMapper.AddTypeHandler(new PostgreSqlTimeSpanHandler());
 
+// Permite que columnas como id_ticket / nombre_assignee se asignen a
+// propiedades como IdTicket / NombreAssignee.
+DefaultTypeMap.MatchNamesWithUnderscores = true;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -31,4 +35,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-

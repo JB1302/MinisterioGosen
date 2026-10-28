@@ -9,6 +9,7 @@ namespace MinisterioGosenAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [IgnoreAntiforgeryToken]
     public class CampanaController(
         IConfiguration _config,
         IUtilesService _utiles) : ControllerBase
