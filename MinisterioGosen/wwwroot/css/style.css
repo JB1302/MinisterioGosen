@@ -1572,3 +1572,86 @@ h1, h2, h3, h4, h5, h6,
         height: 4px;
         border-radius: 10px;
     }
+}
+
+    .card-body.d-flex > .rounded-circle:has(> i.bi) {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .card-body.d-flex > .rounded-circle > i.bi {
+        display: inline-block !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+        font-size: 24px !important;
+        line-height: 1 !important;
+    }
+
+    .rounded-circle.bg-primary.bg-opacity-10 > i.bi {
+        color: #064442 !important;
+    }
+
+    .rounded-circle.bg-warning.bg-opacity-10 > i.bi {
+        color: #946200 !important;
+    }
+
+    .rounded-circle.bg-info.bg-opacity-10 > i.bi {
+        color: #087990 !important;
+    }
+
+    .rounded-circle.bg-success.bg-opacity-10 > i.bi {
+        color: #198754 !important;
+    }
+/* Footer */
+.footer {
+    background: #0d2422 !important;
+    color: #d1d5db !important;
+}
+
+    .footer .footer-item p,
+    .footer .footer-item a:not(.btn) {
+        color: #d1d5db !important;
+    }
+
+        .footer .footer-item p i {
+            color: #bf8350 !important;
+        }
+
+/* Copyright */
+.copyright {
+    background: #091b19 !important;
+    color: #bfc9c7 !important;
+}
+
+    .copyright .text-body {
+        color: #bfc9c7 !important;
+    }
+
+:root,
+[data-bs-theme="light"] {
+    /* Color principal: verde Gosén */
+    --bs-primary: #064442;
+    --bs-primary-rgb: 6, 68, 66;
+    /* Color secundario: dorado Gosén */
+    --bs-secondary: #bf8350;
+    --bs-secondary-rgb: 191, 131, 80;
+    /* Variantes del color principal */
+    --bs-primary-text-emphasis: #0d2422;
+    --bs-primary-bg-subtle: #e5efee;
+    --bs-primary-border-subtle: #b1ceca;
+    /* Enlaces */
+    --bs-link-color: #064442;
+    --bs-link-color-rgb: 6, 68, 66;
+    /* Enlaces al pasar el mouse */
+    --bs-link-hover-color: #bf8350;
+    --bs-link-hover-color-rgb: 191, 131, 80;
+    /* Color de enfoque */
+    --bs-focus-ring-color: rgba(6, 68, 66, 0.25);
+}
