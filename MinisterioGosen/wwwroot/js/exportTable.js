@@ -1,6 +1,6 @@
 ﻿window.dataTableExportOptions = {
     layout: {
-        topStart: {
+        top2Start: {
             buttons: [
                 {
                     extend: 'excelHtml5',
