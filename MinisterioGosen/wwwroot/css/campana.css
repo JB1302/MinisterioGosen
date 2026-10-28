@@ -1,0 +1,361 @@
+/* =========================================================
+   SECCIONES
+   ========================================================= */
+
+.campana-section {
+    background: #ffffff;
+    border: 1px solid #eef0f2;
+    border-radius: 1rem;
+}
+
+.campana-section-title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.campana-section-subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ICONOS
+   ========================================================= */
+
+.campana-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #edf5f4;
+    color: #064442;
+    font-size: 1.25rem;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+
+/* =========================================================
+   PLANTILLAS
+   ========================================================= */
+
+/*
+    Las plantillas son completamente dinámicas.
+
+    El CSS no conoce nombres como:
+    - General
+    - Informativa
+    - Recordatorio
+
+    El color de cada plantilla se obtiene desde PostgreSQL
+    y se coloca en data-color del radio correspondiente.
+*/
+
+.plantilla-card {
+    height: 100%;
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 1rem;
+    background: #ffffff;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+    .plantilla-card:hover {
+        transform: translateY(-2px);
+        border-color: #9fb9b7;
+        box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.06);
+    }
+
+
+/*
+    Estado seleccionado genérico.
+
+    No depende del nombre o código de la plantilla.
+*/
+.plantilla-option:checked + .plantilla-card {
+    border-color: #064442;
+    background: #f2f8f7;
+    box-shadow: 0 0 0 0.15rem rgba(6, 68, 66, 0.08);
+}
+
+
+    /*
+    Resalta ligeramente el icono de la plantilla
+    seleccionada.
+*/
+    .plantilla-option:checked + .plantilla-card
+    .campana-icon {
+        transform: scale(1.05);
+    }
+
+
+/*
+    Accesibilidad al navegar con teclado.
+*/
+.plantilla-option:focus-visible + .plantilla-card {
+    outline: 3px solid rgba(6, 68, 66, 0.20);
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   DESTINATARIOS
+   ========================================================= */
+
+.destinatario-option {
+    border: 1px solid #e9ecef;
+    border-radius: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+    .destinatario-option:hover {
+        background: #f8f9fa;
+        border-color: #cfd7d6;
+    }
+
+
+    .destinatario-option.seleccionado {
+        border-color: #064442;
+        background: #f2f8f7;
+        box-shadow: 0 0 0 0.1rem rgba(6, 68, 66, 0.05);
+    }
+
+
+    /*
+    Se utiliza cuando está activa la opción
+    "Enviar a todos".
+*/
+    .destinatario-option.deshabilitado {
+        opacity: 0.45;
+        cursor: default;
+        pointer-events: none;
+    }
+
+
+/*
+    Contenedor completo de filtros deshabilitado.
+    Compatible con la clase utilizada desde campana.js.
+*/
+.campana-filtros-deshabilitados {
+    opacity: 0.45;
+    transition: opacity 0.2s ease;
+}
+
+
+    /*
+    Evita mostrar cursor interactivo cuando los
+    checkbox están deshabilitados.
+*/
+    .campana-filtros-deshabilitados
+    .destinatario-option {
+        cursor: default;
+    }
+
+
+.campana-resumen {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.85rem;
+}
+
+
+/* =========================================================
+   CHECKBOX Y SWITCH
+   ========================================================= */
+
+#formCampana .form-check-input {
+    cursor: pointer;
+}
+
+    #formCampana .form-check-input:checked {
+        background-color: #064442;
+        border-color: #064442;
+    }
+
+    #formCampana .form-check-input:focus {
+        border-color: rgba(6, 68, 66, 0.6);
+        box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.08);
+    }
+
+
+/* =========================================================
+   CONTADORES
+   ========================================================= */
+
+.campana-counter {
+    font-size: 0.78rem;
+    color: #8a9197;
+}
+
+
+/* =========================================================
+   PREVISUALIZACIÓN
+   ========================================================= */
+
+.campana-preview-wrapper {
+    position: sticky;
+    top: 1.5rem;
+}
+
+
+.email-preview {
+    overflow: hidden;
+    border: 1px solid #e5e7e9;
+    border-radius: 1rem;
+    background: #f4f6f6;
+}
+
+
+/*
+    IMPORTANTE:
+
+    Ya no existen:
+
+    .plantilla-general
+    .plantilla-informativa
+    .plantilla-recordatorio
+
+    El background-color será establecido dinámicamente
+    por campana.js usando data-color.
+*/
+.email-preview-header {
+    padding: 1.5rem;
+    color: #ffffff;
+    /*
+        Color fallback por si no hay ninguna
+        plantilla cargada o JavaScript todavía
+        no se ha ejecutado.
+    */
+    background-color: #064442;
+    transition: background-color 0.25s ease;
+}
+
+
+.email-preview-body {
+    min-height: 270px;
+    margin: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.85rem;
+    background: #ffffff;
+}
+
+
+.email-preview-content {
+    white-space: pre-line;
+    color: #495057;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   FORMULARIO
+   ========================================================= */
+
+#formCampana .form-control,
+#formCampana .form-select {
+    min-height: 45px;
+}
+
+
+#formCampana textarea.form-control {
+    min-height: 190px;
+    resize: vertical;
+}
+
+
+#formCampana .form-control:focus,
+#formCampana .form-select:focus {
+    border-color: rgba(6, 68, 66, 0.6);
+    box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.08);
+}
+
+
+/* =========================================================
+   VALIDACIONES
+   ========================================================= */
+
+#formCampana .form-control.is-invalid,
+#formCampana textarea.is-invalid {
+    border-color: #dc3545;
+}
+
+
+#formCampana .form-control.is-valid,
+#formCampana textarea.is-valid {
+    border-color: #198754;
+}
+
+
+#mensajeValidacion {
+    border-radius: 0.85rem;
+}
+
+
+/* =========================================================
+   BOTONES
+   ========================================================= */
+
+#btnEnviarCampana {
+    min-width: 210px;
+}
+
+
+    #btnEnviarCampana:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 991.98px) {
+
+    .campana-preview-wrapper {
+        position: static;
+    }
+}
+
+
+@media (max-width: 767.98px) {
+
+    .plantilla-card {
+        min-height: auto;
+    }
+
+    .campana-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        font-size: 1.1rem;
+    }
+}
+
+
+@media (max-width: 575.98px) {
+
+    .campana-section {
+        padding: 1.25rem !important;
+    }
+
+    .email-preview-body {
+        margin: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .email-preview-header {
+        padding: 1.25rem;
+    }
+
+    #btnEnviarCampana {
+        width: 100%;
+    }
+}
