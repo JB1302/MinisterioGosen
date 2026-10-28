@@ -1713,3 +1713,87 @@ END;
 $$;
 
 COMMIT;
+
+-- Automatic role synchronization:
+-- Admin (1) is never changed.
+-- Active membership => Miembro (3).
+-- No active memberships => Usuario (2).
+CREATE OR REPLACE FUNCTION fn_sincronizar_rol_miembro()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_id_usuario integer;
+BEGIN
+    v_id_usuario := COALESCE(NEW.id_usuario, OLD.id_usuario);
+
+    IF EXISTS (
+        SELECT 1
+        FROM usuario
+        WHERE id_usuario = v_id_usuario
+          AND id_rol = 1
+    ) THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM usuarios_ministerio um
+        WHERE um.id_usuario = v_id_usuario
+          AND COALESCE(um.estado, 'Activo') = 'Activo'
+          AND um.fecha_salida IS NULL
+    ) THEN
+        UPDATE usuario SET id_rol = 3 WHERE id_usuario = v_id_usuario;
+    ELSE
+        UPDATE usuario SET id_rol = 2 WHERE id_usuario = v_id_usuario;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER trg_sincronizar_rol_miembro
+AFTER INSERT OR UPDATE OR DELETE ON usuarios_ministerio
+FOR EACH ROW
+EXECUTE FUNCTION fn_sincronizar_rol_miembro();
+
+-- Asignación automática de tickets:
+-- Si se crea un ticket sin un responsable asignado, este se asigna al administrador activo (rol 1)
+-- que tenga la menor cantidad de tickets activos (Abiertos / En curso). En caso de empate, se elige el de menor ID.
+-- El solicitante nunca es asignado a su propio ticket. Si no hay ningún administrador disponible,
+-- el campo id_assignee permanece como NULL.
+CREATE OR REPLACE FUNCTION fnAsignarTicketAdminMenosCarga()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.id_assignee IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Serializa las inserciones concurrentes, de modo que dos tickets no asignen el mismo administrador.
+    PERFORM pg_advisory_xact_lock(hashtext('asignacion_tickets'));
+
+    SELECT u.id_usuario
+      INTO NEW.id_assignee
+      FROM usuario u
+      LEFT JOIN tickets t
+             ON t.id_assignee = u.id_usuario
+            AND t.estado IN ('Abierto', 'En Progreso')
+     WHERE u.id_rol = 1
+       AND u.estado = 'A'
+       AND u.id_usuario <> NEW.id_requestor
+     GROUP BY u.id_usuario
+     ORDER BY COUNT(t.id_ticket), u.id_usuario
+     LIMIT 1;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_asignar_ticket_admin
+BEFORE INSERT ON tickets
+FOR EACH ROW
+EXECUTE FUNCTION fnAsignarTicketAdminMenosCarga();
+
+COMMIT;
