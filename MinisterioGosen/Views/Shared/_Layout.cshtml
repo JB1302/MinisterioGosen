@@ -213,7 +213,14 @@
                             Agendar cita
                         </a>
 
-                        <a asp-controller="Tickets"
+
+                    }
+
+                    @if (esAdmin)
+                    {
+                        
+                            <!--Mis Tickets-->
+                      <a asp-controller="Tickets"
                            asp-action="Index"
                            class="nav-link fw-semibold px-lg-3
                             @(NavActivo("Tickets"))">
@@ -221,10 +228,6 @@
                             <i class="bi bi-ticket-detailed-fill me-1"></i>
                             Mis tickets
                         </a>
-                    }
-
-                    @if (esAdmin)
-                    {
                         <!-- GESTIÓN -->
                         <div class="nav-item dropdown">
                             <a href="#"
