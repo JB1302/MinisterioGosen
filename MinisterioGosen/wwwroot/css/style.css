@@ -1102,9 +1102,7 @@ h1, h2, h3, h4, h5, h6,
     background-color: #198754;
 }
 
-.stat-ministerios::before {
-    background-color: #0d6efd;
-}
+
 
 .stat-citas::before {
     background-color: #ffc107;
@@ -1140,10 +1138,6 @@ h1, h2, h3, h4, h5, h6,
     color: #198754;
 }
 
-.stat-ministerios .stat-icon {
-    background-color: rgba(13, 110, 253, 0.12);
-    color: #0d6efd;
-}
 
 .stat-citas .stat-icon {
     background-color: rgba(255, 193, 7, 0.18);
@@ -1193,9 +1187,6 @@ h1, h2, h3, h4, h5, h6,
     color: #198754;
 }
 
-.stat-ministerios .stat-footer i {
-    color: #0d6efd;
-}
 
 .stat-citas .stat-footer i {
     color: #b98900;
@@ -1634,24 +1625,127 @@ h1, h2, h3, h4, h5, h6,
         color: #bfc9c7 !important;
     }
 
+
+
+/* ==========================================
+   PALETA GLOBAL - MINISTERIO GOSÉN
+   Bootstrap 5.3.3
+========================================== */
+
 :root,
 [data-bs-theme="light"] {
-    /* Color principal: verde Gosén */
     --bs-primary: #064442;
     --bs-primary-rgb: 6, 68, 66;
-    /* Color secundario: dorado Gosén */
     --bs-secondary: #bf8350;
     --bs-secondary-rgb: 191, 131, 80;
-    /* Variantes del color principal */
     --bs-primary-text-emphasis: #0d2422;
     --bs-primary-bg-subtle: #e5efee;
     --bs-primary-border-subtle: #b1ceca;
-    /* Enlaces */
     --bs-link-color: #064442;
     --bs-link-color-rgb: 6, 68, 66;
-    /* Enlaces al pasar el mouse */
     --bs-link-hover-color: #bf8350;
     --bs-link-hover-color-rgb: 191, 131, 80;
-    /* Color de enfoque */
     --bs-focus-ring-color: rgba(6, 68, 66, 0.25);
+}
+
+/* ==========================================
+   BOTONES PRINCIPALES
+========================================== */
+
+.btn-primary {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: #064442;
+    --bs-btn-border-color: #064442;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #0d2422;
+    --bs-btn-hover-border-color: #0d2422;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #0d2422;
+    --bs-btn-active-border-color: #0d2422;
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: #064442;
+    --bs-btn-disabled-border-color: #064442;
+    --bs-btn-focus-shadow-rgb: 6, 68, 66;
+}
+
+/* Botones secundarios que antes eran cian */
+.btn-info {
+    --bs-btn-color: #0d2422;
+    --bs-btn-bg: #bf8350;
+    --bs-btn-border-color: #bf8350;
+    --bs-btn-hover-color: #0d2422;
+    --bs-btn-hover-bg: #d19a68;
+    --bs-btn-hover-border-color: #d19a68;
+    --bs-btn-active-color: #0d2422;
+    --bs-btn-active-bg: #a96d3f;
+    --bs-btn-active-border-color: #a96d3f;
+    --bs-btn-disabled-color: #0d2422;
+    --bs-btn-disabled-bg: #bf8350;
+    --bs-btn-disabled-border-color: #bf8350;
+    --bs-btn-focus-shadow-rgb: 191, 131, 80;
+}
+
+/* Botones con borde */
+.btn-outline-primary {
+    --bs-btn-color: #064442;
+    --bs-btn-border-color: #064442;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #064442;
+    --bs-btn-hover-border-color: #064442;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #0d2422;
+    --bs-btn-active-border-color: #0d2422;
+    --bs-btn-disabled-color: #064442;
+    --bs-btn-disabled-border-color: #064442;
+    --bs-btn-focus-shadow-rgb: 6, 68, 66;
+}
+
+/* ==========================================
+   PAGINACIÓN - DATATABLES
+========================================== */
+
+.pagination {
+    --bs-pagination-color: #064442;
+    --bs-pagination-hover-color: #0d2422;
+    --bs-pagination-focus-color: #064442;
+    --bs-pagination-active-color: #ffffff;
+    --bs-pagination-active-bg: #064442;
+    --bs-pagination-active-border-color: #064442;
+    --bs-pagination-focus-box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.18);
+}
+
+/* ==========================================
+   MENÚS Y NAVEGACIÓN
+========================================== */
+
+.dropdown-menu {
+    --bs-dropdown-link-hover-bg: #e5efee;
+    --bs-dropdown-link-hover-color: #0d2422;
+    --bs-dropdown-link-active-bg: #064442;
+    --bs-dropdown-link-active-color: #ffffff;
+}
+
+.nav-pills {
+    --bs-nav-pills-link-active-bg: #064442;
+    --bs-nav-pills-link-active-color: #ffffff;
+}
+
+/* ==========================================
+   FORMULARIOS
+========================================== */
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #7baaa5;
+    box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.15);
+}
+
+.form-check-input:checked {
+    background-color: #064442;
+    border-color: #064442;
+}
+
+.form-check-input:focus {
+    border-color: #7baaa5;
+    box-shadow: 0 0 0 0.2rem rgba(6, 68, 66, 0.15);
 }
