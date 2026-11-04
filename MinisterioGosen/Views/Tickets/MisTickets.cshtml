@@ -1,0 +1,201 @@
+﻿
+@model List<MinisterioGosen.Models.TicketModel>
+
+@{
+    ViewData["Title"] = "Mis tickets";
+
+    var tickets = Model ?? new List<MinisterioGosen.Models.TicketModel>();
+
+    var totalTickets = tickets.Count;
+    var abiertos = tickets.Count(x => x.Estado == "Abierto");
+    var enProgreso = tickets.Count(x => x.Estado == "En Progreso");
+    var cerrados = tickets.Count(x => x.Estado == "Cerrado");
+}
+
+<div class="container py-4">
+
+    <!-- Encabezado -->
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-ticket-detailed-fill me-2 text-primary"></i>
+            Mis tickets
+        </h2>
+        <p class="text-muted mb-0">
+            Consulta el estado y seguimiento de tus solicitudes.
+        </p>
+    </div>
+
+    <!-- Resumen -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total de tickets</p>
+                    <h3 class="fw-bold mb-0">@totalTickets</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Abiertos</p>
+                    <h3 class="fw-bold text-warning mb-0">@abiertos</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">En progreso</p>
+                    <h3 class="fw-bold text-info mb-0">@enProgreso</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Cerrados</p>
+                    <h3 class="fw-bold text-success mb-0">@cerrados</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Listado de tickets -->
+    @if (tickets.Any())
+    {
+        <div class="row g-4">
+
+            @foreach (var ticket in tickets)
+            {
+                <div class="col-12 col-xl-6">
+
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                        <div class="card-body p-4">
+
+                            <!-- Código y estado -->
+                            <div class="d-flex justify-content-between
+                                        align-items-center gap-2 mb-3">
+
+                                <span class="badge rounded-pill bg-secondary">
+                                    #@ticket.IdTicket
+                                </span>
+
+                                <partial name="EstadoBadge"
+                                         model="ticket.Estado" />
+                            </div>
+
+                            <!-- Título -->
+                            <h5 class="fw-bold mb-2">
+                                @ticket.Titulo
+                            </h5>
+
+                            <!-- Fecha -->
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-calendar-event me-1"></i>
+                                @ticket.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                            </p>
+
+                            <!-- Responsable -->
+                            <div class="mb-3">
+                                <span class="text-muted small">
+                                    Responsable:
+                                </span>
+
+                                <span class="fw-semibold small">
+                                    @(string.IsNullOrWhiteSpace(ticket.NombreAssignee)
+                                        ? "Sin asignar"
+                                        : ticket.NombreAssignee)
+                                </span>
+                            </div>
+
+                            <!-- Mostrar detalle -->
+                            <button class="btn btn-outline-primary btn-sm rounded-pill"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#ticket-@ticket.IdTicket"
+                                    aria-expanded="false"
+                                    aria-controls="ticket-@ticket.IdTicket">
+
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                Ver detalle y respuesta
+                            </button>
+
+                            <!-- Detalle desplegable -->
+                            <div class="collapse mt-4"
+                                 id="ticket-@ticket.IdTicket">
+
+                                <hr />
+
+                                <h6 class="fw-bold mb-2">
+                                    Descripción de la solicitud
+                                </h6>
+
+                                <div class="bg-light rounded-3 p-3 mb-3"
+                                     style="white-space: pre-wrap;">@ticket.Descripcion</div>
+
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-reply-fill me-1"></i>
+                                    Respuesta de soporte
+                                </h6>
+
+                                @if (!string.IsNullOrWhiteSpace(ticket.Respuesta))
+                                {
+                                    <div class="bg-success bg-opacity-10
+                                                border border-success
+                                                rounded-3 p-3"
+                                         style="white-space: pre-wrap;">@ticket.Respuesta</div>
+                                }
+                                else
+                                {
+                                    <div class="bg-light rounded-3 p-3 text-muted">
+                                        Esta solicitud todavía no tiene una respuesta.
+                                    </div>
+                                }
+
+                                @if (ticket.FechaCierre.HasValue)
+                                {
+                                    <p class="text-muted small mt-3 mb-0">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Fecha de cierre:
+                                        @ticket.FechaCierre.Value.ToString("dd/MM/yyyy HH:mm")
+                                    </p>
+                                }
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    }
+    else
+    {
+        <!-- Estado vacío -->
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body text-center py-5">
+
+                <i class="bi bi-ticket-detailed display-4 text-muted"></i>
+
+                <h5 class="fw-bold mt-3">
+                    No tienes tickets registrados
+                </h5>
+
+                <p class="text-muted mb-0">
+                    Cuando registres una solicitud desde el asistente
+                    virtual, podrás consultarla aquí.
+                </p>
+
+            </div>
+        </div>
+    }
+
+</div>
