@@ -213,6 +213,16 @@
                             Agendar cita
                         </a>
 
+                        
+                    <!-- Mis Tickets -->
+                    <a asp-controller="Tickets"
+                       asp-action="MisTickets"
+                       class="nav-link fw-semibold px-lg-3
+                       @(NavActivo("Tickets", "MisTickets"))">
+
+                        <i class="bi bi-ticket-detailed-fill me-1"></i>
+                        Mis tickets
+                    </a>
 
                     }
 

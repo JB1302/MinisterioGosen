@@ -79,7 +79,46 @@ namespace MinisterioGosen.Controllers
             throw new Exception("Error al consultar los tickets");
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> MisTickets()
+        {
+            if (EsAdmin())
+                return RedirectToAction("Index", "Tickets");
+
+            var idUsuario = IdUsuarioSesion();
+
+            if (idUsuario <= 0)
+                return RedirectToAction("Index", "Home");
+
+            using var client = _http.CreateClient();
+
+            var url = _config["Valores:UrlApi"] +
+                      $"Tickets/ObtenerTicketsPorUsuario?idUsuario={idUsuario}";
+
+            var response = await client.GetAsync(url);
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var tickets = await response.Content
+                    .ReadFromJsonAsync<List<TicketModel>>()
+                    ?? new List<TicketModel>();
+
+                var misTickets = tickets
+                    .Where(x => x.IdRequestor == idUsuario)
+                    .OrderByDescending(x => x.FechaCreacion)
+                    .ToList();
+
+                return View(misTickets);
+            }
+
+            throw new Exception("Error al consultar los tickets del usuario");
+        }
+
+
         #endregion
+
+
 
         #region Detalle
 
