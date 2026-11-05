@@ -8,7 +8,7 @@
         return;
     }
 
-    const MENSAJE_CIERRE = "Debe registrar una respuesta para cerrar el ticket.";
+    const MENSAJE_CIERRE = "Debe registrar una respuesta o motivo para cerrar o cancelar el ticket.";
     const MENSAJE_LONGITUD = "La respuesta no puede superar 500 caracteres.";
 
     function marcarInvalido(mensaje) {
@@ -33,7 +33,7 @@
         const valor = respuesta.value.trim();
 
         // Para cerrar el ticket la respuesta es obligatoria.
-        if (estado.value === "Cerrado" && valor === "") {
+        if ((estado.value === "Cerrado" || estado.value === "Cancelado") && valor === "") {
             event.preventDefault();
             marcarInvalido(MENSAJE_CIERRE);
             return;

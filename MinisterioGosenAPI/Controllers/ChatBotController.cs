@@ -2,14 +2,14 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using MinisterioGosenAPI.Models;
 using Npgsql;
-using System.Data;
 using System.Text.Json;
+using MinisterioGosenAPI.Services;
 
 namespace MinisterioGosenAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ChatbotController(IConfiguration _configuration) : ControllerBase
+    public class ChatbotController(IConfiguration _configuration, ITicketNotificacionService notificaciones) : ControllerBase
     {
         private class ChatbotDbRow
         {
@@ -131,6 +131,7 @@ namespace MinisterioGosenAPI.Controllers
 
                 if (idTicket > 0)
                 {
+                    await notificaciones.NotificarCreacionAsync(idTicket);
                     return Ok(new
                     {
                         idTicket = idTicket,
