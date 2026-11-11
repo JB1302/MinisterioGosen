@@ -172,8 +172,8 @@ namespace MinisterioGosen.Controllers
 
             if (!EstadosValidos.Contains(model.Estado))
                 error = "Seleccione un estado válido.";
-            else if (model.Estado == "Cerrado" && string.IsNullOrWhiteSpace(respuesta))
-                error = "Debe registrar una respuesta para cerrar el ticket.";
+            else if ((model.Estado is "Cerrado" or "Cancelado") && string.IsNullOrWhiteSpace(respuesta))
+                error = "Debe registrar una respuesta o motivo para finalizar o cancelar el ticket.";
             else if (respuesta is { Length: > 500 })
                 error = "La respuesta no puede superar 500 caracteres.";
 
