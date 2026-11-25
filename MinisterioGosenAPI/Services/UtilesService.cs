@@ -13,42 +13,56 @@ namespace MinisterioGosenAPI.Services
                 .ToString("N")[..10];
         }
 
-
         public async Task EnviarCorreoAsync(
             string destinatario,
             string asunto,
             string cuerpoHtml)
         {
             // =====================================================
-            // CONFIGURACIÓN
+            // CONFIGURACIÓN SMTP2GO
             // =====================================================
 
-            var cuentaGmail =
-                _config["Correos:CuentaGmail"];
+            var smtpHost =
+                _config["Correos:SmtpHost"] ?? "mail.smtp2go.com";
 
-            var contrasenaAplicacion =
-                _config["Correos:ContrasenaAplicacion"];
+            var smtpPort =
+                _config.GetValue<int>("Correos:SmtpPort", 2525);
 
+            var smtpUsuario =
+                _config["Correos:SmtpUsuario"];
 
-            if (string.IsNullOrWhiteSpace(cuentaGmail))
+            var smtpContrasena =
+                _config["Correos:SmtpContrasena"];
+
+            var remitente =
+                _config["Correos:Remitente"];
+
+            // =====================================================
+            // VALIDACIONES
+            // =====================================================
+
+            if (string.IsNullOrWhiteSpace(smtpUsuario))
             {
                 throw new InvalidOperationException(
-                    "No se ha configurado la cuenta de correo."
+                    "No se ha configurado el usuario SMTP."
                 );
             }
 
-
-            if (string.IsNullOrWhiteSpace(
-                    contrasenaAplicacion))
+            if (string.IsNullOrWhiteSpace(smtpContrasena))
             {
                 throw new InvalidOperationException(
-                    "No se ha configurado la contraseña de aplicación del correo."
+                    "No se ha configurado la contraseña SMTP."
                 );
             }
 
+            if (string.IsNullOrWhiteSpace(remitente))
+            {
+                throw new InvalidOperationException(
+                    "No se ha configurado el correo remitente."
+                );
+            }
 
-            if (string.IsNullOrWhiteSpace(
-                    destinatario))
+            if (string.IsNullOrWhiteSpace(destinatario))
             {
                 throw new ArgumentException(
                     "El destinatario del correo es obligatorio.",
@@ -56,9 +70,7 @@ namespace MinisterioGosenAPI.Services
                 );
             }
 
-
-            if (string.IsNullOrWhiteSpace(
-                    asunto))
+            if (string.IsNullOrWhiteSpace(asunto))
             {
                 throw new ArgumentException(
                     "El asunto del correo es obligatorio.",
@@ -66,82 +78,95 @@ namespace MinisterioGosenAPI.Services
                 );
             }
 
-
             // =====================================================
             // MENSAJE
             // =====================================================
 
-            var mensaje =
-                new MimeMessage();
-
+            var mensaje = new MimeMessage();
 
             mensaje.From.Add(
                 new MailboxAddress(
                     "Ministerio Gosén",
-                    cuentaGmail
+                    remitente
                 )
             );
-
 
             mensaje.To.Add(
-                MailboxAddress.Parse(
-                    destinatario
-                )
+                MailboxAddress.Parse(destinatario)
             );
 
+            mensaje.Subject = asunto;
 
-            mensaje.Subject =
-                asunto;
-
-
-            mensaje.Body =
-                new TextPart("html")
-                {
-                    Text = cuerpoHtml ?? string.Empty
-                };
-
+            mensaje.Body = new TextPart("html")
+            {
+                Text = cuerpoHtml ?? string.Empty
+            };
 
             // =====================================================
-            // SMTP
+            // CONEXIÓN SMTP
             // =====================================================
 
-            using var cliente =
-                new SmtpClient();
+            using var cliente = new SmtpClient();
 
+            cliente.Timeout = 10000;
+
+            using var cancellationTokenSource =
+                new CancellationTokenSource(
+                    TimeSpan.FromSeconds(15)
+                );
+
+            var cancellationToken =
+                cancellationTokenSource.Token;
 
             try
             {
                 await cliente.ConnectAsync(
-                    "smtp.gmail.com",
-                    587,
-                    SecureSocketOptions.StartTls
+                    smtpHost,
+                    smtpPort,
+                    SecureSocketOptions.StartTls,
+                    cancellationToken
                 );
-
 
                 await cliente.AuthenticateAsync(
-                    cuentaGmail,
-                    contrasenaAplicacion
+                    smtpUsuario,
+                    smtpContrasena,
+                    cancellationToken
                 );
 
-
                 await cliente.SendAsync(
-                    mensaje
+                    mensaje,
+                    cancellationToken
+                );
+            }
+            catch (OperationCanceledException ex)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    "Se agotó el tiempo de espera del servidor SMTP.",
+                    ex
                 );
             }
             finally
             {
-                /*
-                 * Solo intentamos desconectar si realmente
-                 * se estableció una conexión.
-                 *
-                 * Esto evita ocultar la excepción original
-                 * si ConnectAsync falla.
-                 */
                 if (cliente.IsConnected)
                 {
-                    await cliente.DisconnectAsync(
-                        true
-                    );
+                    try
+                    {
+                        using var desconexionToken =
+                            new CancellationTokenSource(
+                                TimeSpan.FromSeconds(3)
+                            );
+
+                        await cliente.DisconnectAsync(
+                            true,
+                            desconexionToken.Token
+                        );
+                    }
+                    catch
+                    {
+                        // Evita ocultar un error previo de envío
+                        // por un fallo durante la desconexión.
+                    }
                 }
             }
         }
