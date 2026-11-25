@@ -84,7 +84,22 @@ public class TicketNotificacionService(
             var ruta = Path.Combine(AppContext.BaseDirectory, "Templates", "TicketNotificacion.html");
             var plantilla = await File.ReadAllTextAsync(ruta);
             var cuerpo = Renderizar(plantilla, ticket, encabezado, mensaje, etiquetaRespuesta);
-            await correo.EnviarCorreoAsync(ticket.Correo, asunto, cuerpo);
+            logger.LogInformation(
+                    "Iniciando envío de notificación del tiquete {IdTicket}",
+                    ticket.IdTicket
+                );
+
+                            await correo.EnviarCorreoAsync(
+                                ticket.Correo,
+                                asunto,
+                                cuerpo
+                            );
+
+                            logger.LogInformation(
+                                "Notificación del tiquete {IdTicket} aceptada por SMTP",
+                                ticket.IdTicket
+                            );
+
         }
         catch (Exception ex)
         {
