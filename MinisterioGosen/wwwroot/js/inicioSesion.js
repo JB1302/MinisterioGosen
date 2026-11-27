@@ -1,20 +1,54 @@
 ﻿$(function () {
 
 // Despertar la API desde el servidor web
-fetch("/Home/ActivarAPI", {
-    method: "GET",
-    cache: "no-store"
-})
-.then(response => {
-    if (!response.ok) {
-        throw new Error("HTTP " + response.status);
+let activacion = null;
+
+async function esperarAPI() {
+    const limite = Date.now() + 120000;
+
+    while (Date.now() < limite) {
+        try {
+            const response = await fetch("/Home/ActivarAPI", {
+                method: "GET",
+                cache: "no-store",
+                signal: AbortSignal.timeout(15000)
+            });
+
+            if (response.ok) {
+                const datos = await response.json();
+
+                if (datos.disponible === true) {
+                    console.log("API disponible");
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.warn("API todavía no disponible");
+        }
+
+        console.log("Reintentando conexión con la API...");
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    console.log("API disponible");
-})
-.catch(error => {
-    console.error("Error activando la API:", error);
-});
+    return false;
+}
+
+function activarAPI() {
+    if (!activacion) {
+        activacion = esperarAPI().then(disponible => {
+            if (!disponible) {
+                activacion = null;
+            }
+
+            return disponible;
+        });
+    }
+
+    return activacion;
+}
+
+activarAPI();
 
     // Validaciones del inicio de sesión
     $("#InicioSesion").validate({
@@ -52,7 +86,23 @@ fetch("/Home/ActivarAPI", {
             $(element).addClass("is-valid");
         },
         submitHandler: function (form) {
-            form.submit();
+            const boton = $(form).find("button[type='submit']");
+
+            boton.prop("disabled", true);
+            boton.text("Conectando con el servidor...");
+
+            activarAPI().then(disponible => {
+                if (disponible) {
+                    form.submit();
+                } else {
+                    boton.prop("disabled", false);
+                    boton.text("Iniciar Sesión");
+
+                    alert("El servidor no está disponible. Intente nuevamente.");
+                }
+            });
+
+            return false;
         }
     });
 

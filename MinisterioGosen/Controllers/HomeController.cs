@@ -28,15 +28,27 @@ namespace MinisterioGosen.Controllers
                     "/health"
                 );
 
-                var response = await client.GetAsync(url);
+                using var response = await client.GetAsync(
+                    url, HttpContext.RequestAborted
+                );
 
-                return StatusCode((int)response.StatusCode);
+                var contenido = await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine($"Estado API: {(int)response.StatusCode}");
+
+                if (response.IsSuccessStatusCode &&
+                    contenido.Trim() == "\"API disponible\"")
+                {
+                    return Ok(new { disponible = true });
+                }
+
+                return StatusCode(503, new { disponible = false });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error activando API: {ex.Message}");
 
-                return StatusCode(503);
+                return StatusCode(503, new { disponible = false });
             }
         }
 
