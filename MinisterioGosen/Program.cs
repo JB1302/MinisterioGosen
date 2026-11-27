@@ -4,6 +4,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddHttpClient();
+
+builder.Services.ConfigureHttpClientDefaults(options =>
+{
+    options.ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(3);
+    });
+});
+
 builder.Services.AddSession();
 
 var app = builder.Build();

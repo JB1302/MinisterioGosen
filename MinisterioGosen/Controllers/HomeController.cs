@@ -17,6 +17,30 @@ namespace MinisterioGosen.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> ActivarAPI()
+        {
+            try
+            {
+                using var client = _http.CreateClient();
+
+                var url = new Uri(
+                    new Uri(_config["Valores:UrlApi"]!),
+                    "/health"
+                );
+
+                var response = await client.GetAsync(url);
+
+                return StatusCode((int)response.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error activando API: {ex.Message}");
+
+                return StatusCode(503);
+            }
+        }
+
+        [HttpGet]
         public IActionResult Error(int statusCode = 0)
         {
             ViewBag.StatusCode = statusCode;
