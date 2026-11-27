@@ -1,6 +1,17 @@
 ﻿$(function () {
 
-    // Despertar la API desde el servidor web
+    // Despertar la API directamente desde el navegador
+    function despertarAPI() {
+        fetch("https://ministeriogosen-api.onrender.com/health", {
+            method: "GET",
+            mode: "no-cors",
+            cache: "no-store"
+        }).catch(error => {
+            console.warn("Activación directa no disponible:", error);
+        });
+    }
+
+    // Comprobar disponibilidad desde el servidor web
     let activacion = null;
 
     async function esperarAPI() {
@@ -8,11 +19,17 @@
 
         while (Date.now() < limite) {
             try {
+                const restante = limite - Date.now();
+
+                if (restante <= 0) {
+                    break;
+                }
+
                 const response = await fetch("/Home/ActivarAPI", {
                     method: "GET",
                     cache: "no-store",
                     signal: AbortSignal.timeout(
-                        Math.min(90000, limite - Date.now())
+                        Math.min(90000, restante)
                     )
                 });
 
@@ -44,6 +61,11 @@
 
     function activarAPI() {
         if (!activacion) {
+
+            // Solicitar arranque desde el navegador
+            despertarAPI();
+
+            // Verificar disponibilidad desde el servidor
             activacion = esperarAPI().finally(() => {
                 activacion = null;
             });
