@@ -1,5 +1,15 @@
 ﻿$(function () {
 
+    // Despertar la API de Render
+    fetch("https://ministeriogosen-api.onrender.com/health", {
+        method: "GET",
+        mode: "no-cors",
+        cache: "no-store"
+    }).catch(error => {
+        console.error("Error activando la API:", error);
+    });
+
+    // Validaciones del inicio de sesión
     $("#InicioSesion").validate({
         rules: {
             Correo: {

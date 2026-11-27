@@ -29,5 +29,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+app.MapGet("/health", () => Results.Ok("API disponible"))
+    .AllowAnonymous();
 
 app.Run();

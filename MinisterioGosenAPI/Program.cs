@@ -35,4 +35,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/health", () => Results.Ok("API disponible"))
+    .AllowAnonymous();
+
 app.Run();
